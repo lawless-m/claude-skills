@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/matthew.heath/Git/RocsMiddleware/PgQuery/**)",
+      "Read(//c/Users/matthew.heath/Git/JordanPrice/Services/**)",
+      "Read(//c/Users/matthew.heath/Git/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

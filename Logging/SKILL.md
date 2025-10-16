@@ -1,9 +1,82 @@
-# Logging Skill: UTF-8 File Logging with Date-Based Filenames
+---
+name: Logging
+description: UTF-8 file logging with automatic date-based filenames and thread-safe operations for RocsMiddleware services
+---
 
-## Overview
-This skill describes the standard logging pattern used in RocsMiddleware applications for UTF-8 file logging with automatic date-based filenames.
+# Logging
 
-## Standard Pattern
+## Instructions
+
+When helping users implement logging in RocsMiddleware services, follow these guidelines:
+
+1. **Command-Line Option**: Always include `--log-dir` parameter for specifying log directory path
+
+2. **UTF-8 Encoding**: All log files must use UTF-8 encoding without BOM
+
+3. **Automatic Filename Pattern**: Use `{ProgramName}_YYYY_MM_DD.log` format with automatic date rotation
+
+4. **Directory Path Handling**: Smart detection - if path has no extension or ends with separator, treat as directory and use directory name as base filename
+
+5. **Error Handling**: Include console output before logger initialization since logger may fail. Always check if `_logger` is null in exception handlers.
+
+6. **Log Levels**: Use `LogLevel.Debug` with `--debug` flag, default to `LogLevel.Information`
+
+7. **Thread Safety**: The UTF8Writer uses locking for concurrent writes
+
+8. **Utf8LoggingExtensions.cs**: Copy the reference implementation to project's `Services/` directory - provides UTF8Writer, UTF8LoggerProvider, UTF8Logger, and helper methods
+
+## Examples
+
+### Example 1: Basic Logger Setup
+```
+User: Help me add logging to my RocsMiddleware service
+
+Claude: I'll set up the standard UTF-8 file logging pattern:
+- Add --log-dir command-line option
+- Copy Utf8LoggingExtensions.cs to Services/
+- Initialize logger with automatic date-based filename
+- Add console output before logger initialization for debugging
+
+[Provides implementation using the Logger Initialization pattern from reference material below]
+```
+
+### Example 2: Directory Path Handling
+```
+User: Why isn't my log file being created when I specify --log-dir?
+
+Claude: Let me check the directory path handling. The logger should:
+- Detect if path is a directory (no extension or ends with separator)
+- Use directory name as base filename
+- Add date string and .log extension automatically
+
+Common issue: Old Utf8LoggingExtensions.cs without directory detection logic.
+Solution: Copy the updated version from skills folder.
+
+[Provides directory detection implementation from reference material below]
+```
+
+### Example 3: Error Handling Before Logger Init
+```
+User: My program just prints "Error" with no details
+
+Claude: This happens when an exception occurs before logger initialization. I'll add:
+- Console.WriteLine at key points (startup, before logger init, after logger init)
+- Null check on _logger in exception handler
+- Fallback to console output if logger is null
+
+[Provides error handling pattern from reference material below]
+```
+
+---
+
+# Reference Implementation Details
+
+The sections below contain proven working code from RocsMiddleware services that the examples above reference.
+
+**Reference Files in This Folder**:
+- `Utf8LoggingExtensions.cs` - Complete UTF-8 logger implementation (copy to Services/)
+
+# Standard Logging Pattern
 
 All RocsMiddleware services use a consistent logging approach:
 

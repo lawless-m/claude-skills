@@ -73,13 +73,18 @@ This folder contains domain-specific skills that teach Claude about proven patte
 ## How to Use Skills
 
 ### Invoke a Skill
-Skills are invoked in Claude Code using the skill name:
+Skills are loaded automatically by Claude when relevant to the task, or you can explicitly request them:
 
-```
-/skill Databases
-/skill Elasticsearch
-/skill "Parquet Files"
-```
+**Natural invocation (recommended)**:
+- "Help me with Elasticsearch queries" → Claude loads Elasticsearch skill
+- "I need to create a Parquet file" → Claude loads Parquet Files skill
+- "Set up database connections" → Claude loads Databases skill
+
+**Explicit request**:
+- "Use the Databases skill to help me"
+- "Load the Parquet Files skill"
+
+Skills are invoked using the Skill tool internally by Claude when needed.
 
 ### Skill Structure
 Each skill follows this pattern:

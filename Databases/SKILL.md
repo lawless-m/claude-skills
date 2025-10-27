@@ -43,7 +43,7 @@ Claude: I'll use DuckDB's ODBC driver to query the Parquet file directly:
 - Connection: DSN=DuckDB
 - Feature: read_parquet() function
 - Parameters: ? placeholders
-- Timeout: 60 seconds for large files
+- Timeout: 60 seconds for large files 
 
 [Provides implementation using the DuckDB pattern from reference material below]
 ```

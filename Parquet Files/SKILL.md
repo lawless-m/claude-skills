@@ -11,7 +11,9 @@ When helping users work with Parquet files in C#, follow these guidelines:
 
 1. **Library Selection**: Always use `Parquet.Net` (versions 4.23.5 - 4.25.0) for parquet operations.
 
-2. **Schema Creation**: Generate schemas dynamically from data sources using the pattern matching approach shown below. Convert unsupported types (like Decimal) to compatible types (double).
+2. **Schema Creation**: Generate schemas dynamically from data sources using the pattern matching approach shown below. Convert unsupported types to compatible types:
+   - **Decimal** → `double`
+   - **DateTimeOffset** → `DateTime` (DateTimeOffset support was dropped due to ambiguity issues)
 
 3. **Batch Sizing**:
    - Default to 50,000 records for single-threaded operations
@@ -34,6 +36,8 @@ When helping users work with Parquet files in C#, follow these guidelines:
    - Deduplicate using HashSet before appending
 
 7. **Large Files**: Write data in batches directly to the target parquet file. Never create temporary batch files that need combining - this is unnecessary complexity.
+
+8. **Streaming from External Sources**: For very large datasets from external sources (Elasticsearch, APIs, databases), use callback-based streaming to write each source batch immediately as it arrives. This prevents loading millions of records into memory.
 
 ## Examples
 
@@ -125,35 +129,91 @@ public class ParquetUpdateQueue
 
 **Key Benefits**: Maximum 1 active + 1 waiting request, prevents queue buildup
 
-### ElastiCompare: Multi-Threaded Batch Pattern
-**Use Case**: Multi-threaded Elasticsearch downloads (100s of MB) with memory management
+### ElastiFetch: Scroll Batch Streaming Pattern (BEST for Large Downloads)
+**Use Case**: Very large Elasticsearch downloads (millions of documents, GBs of data) with minimal memory
 
-**Implementation**: Process in 10k batches, write directly to target file with thread-safe coordination
+**Problem**: Downloading all documents into a List first causes massive memory usage (8GB+ for large indexes!)
+
+**Solution**: Write each scroll batch (5000 docs) immediately as it arrives - never accumulate in memory
+
 ```csharp
-private readonly SemaphoreSlim _writeLock = new(1, 1);
-
-private async Task DownloadAndWriteInBatchesAsync(...)
+// Elasticsearch: Callback-based streaming (optimal memory usage)
+public async Task DownloadIndexStreamingWithCallbackAsync(
+    string index,
+    Func<List<(string id, JObject source)>, Task> scrollBatchProcessor)
 {
-    const int batchSize = 10000;
-    var processedBatch = new List<DocumentData>();
+    string? scrollId = null;
 
-    for (int i = 0; i < allDocuments.Count; i += batchSize)
+    // Initial scroll request (5000 docs)
+    var initialResponse = await _httpClient.PostAsync(
+        $"{_baseUrl}/{index}/_search?scroll=5m&size=5000",
+        new StringContent(JsonConvert.SerializeObject(new {
+            query = new { match_all = new { } },
+            sort = new[] { "_doc" }
+        }), Encoding.UTF8, "application/json"));
+
+    var initialResults = JObject.Parse(await initialResponse.Content.ReadAsStringAsync());
+    scrollId = initialResults["_scroll_id"]?.ToString();
+    var hits = initialResults["hits"]?["hits"] as JArray;
+
+    // Process first batch immediately
+    if (hits != null && hits.Count > 0)
     {
-        var batch = allDocuments.Skip(i).Take(batchSize).ToList();
-        processedBatch.AddRange(ProcessBatch(batch));
+        var scrollBatch = hits.Select(hit => (
+            id: hit["_id"]?.ToString() ?? "",
+            source: hit["_source"] as JObject
+        )).Where(x => x.source != null).ToList();
 
-        // Write directly to target file with thread safety
-        await WriteToParquetAsync(processedBatch, parquetPath);
+        await scrollBatchProcessor(scrollBatch);
+    }
 
-        // Critical: Force GC after each batch
-        processedBatch.Clear();
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
+    // Continue scrolling - write each batch immediately
+    while (!string.IsNullOrEmpty(scrollId))
+    {
+        var scrollResponse = await _httpClient.PostAsync(
+            $"{_baseUrl}/_search/scroll",
+            new StringContent(JsonConvert.SerializeObject(new {
+                scroll = "5m",
+                scroll_id = scrollId
+            }), Encoding.UTF8, "application/json"));
+
+        var scrollResults = JObject.Parse(await scrollResponse.Content.ReadAsStringAsync());
+        hits = scrollResults["hits"]?["hits"] as JArray;
+
+        if (hits == null || hits.Count == 0) break;
+
+        var scrollBatch = hits.Select(hit => (
+            id: hit["_id"]?.ToString() ?? "",
+            source: hit["_source"] as JObject
+        )).Where(x => x.source != null).ToList();
+
+        // Write THIS batch to parquet, then clear and GC
+        await scrollBatchProcessor(scrollBatch);
+
+        scrollId = scrollResults["_scroll_id"]?.ToString();
     }
 }
+
+// Usage: Write each scroll batch to parquet immediately
+await elasticsearch.DownloadIndexStreamingWithCallbackAsync(index, async (scrollBatch) =>
+{
+    var processedBatch = ProcessBatch(scrollBatch, columns, hashService);
+    await AppendBatchToParquetAsync(processedBatch, parquetPath, columns, isFirstBatch);
+    isFirstBatch = false;
+
+    processedBatch.Clear();
+    GC.Collect();
+    GC.WaitForPendingFinalizers();
+});
 ```
 
-**Key Benefits**: Avoids memory exhaustion, no temporary files, direct write with proper locking
+**Key Benefits**:
+- Memory stays **constant** (~50-100MB) regardless of index size
+- No accumulation of millions of documents in RAM
+- Write happens immediately as data arrives
+- Handles multi-GB indexes easily
+
+**When to Use**: Always prefer this for large external data sources (Elasticsearch, APIs, large DB queries)
 
 ## Schema Handling (Working Code)
 
@@ -262,8 +322,9 @@ public static async Task AppendDataTableToParquet(DataTable dataTable, string fi
 {
     var schema = CreateSchemaFromDataTable(dataTable);
 
-    using var fileStream = new FileStream(filePath, FileMode.OpenOrCreate, FileAccess.Write);
-    fileStream.Seek(0, SeekOrigin.End); // Position at end for append
+    // IMPORTANT: Use FileAccess.ReadWrite when appending because ParquetWriter needs to
+    // read existing file metadata to validate schema compatibility
+    using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite);
 
     using var parquetWriter = await ParquetWriter.CreateAsync(schema, fileStream, append: true);
     using var groupWriter = parquetWriter.CreateRowGroup();

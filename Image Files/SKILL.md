@@ -10,6 +10,7 @@ description: Image manipulation using ImageMagick command-line tools for resizin
 When helping users work with image files, follow these guidelines:
 
 1. **Tool Availability**: ImageMagick is installed and available on the system path. Use `magick` command (modern syntax) or legacy commands (`convert`, `identify`, `mogrify`)
+If it is not on the path look in C:\Program Files\ImageMagick-7.1.2-Q16-HDRI
 
 2. **Modern vs Legacy Syntax**:
    - **Modern** (ImageMagick 7+): `magick convert input.jpg output.png`

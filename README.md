@@ -162,3 +162,6 @@ When updating a skill:
 ---
 
 *Generated with Claude Code for Matthew Heath's development environment*
+
+Also synced to  https://github.com/lawless-m/claude-skills
+

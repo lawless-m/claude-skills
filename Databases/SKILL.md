@@ -301,6 +301,105 @@ while (reader.Read())
 - Proper parameter typing
 - Simpler code
 
+**CRITICAL: Type Casts Required for Functions with VARCHAR Parameters**
+
+When calling PostgreSQL functions that have VARCHAR parameters with specific lengths (e.g., `VARCHAR(15)`), you MUST use explicit type casts in the SQL. PostgreSQL treats `VARCHAR` without a length as a different type than `VARCHAR(n)`, causing function signature mismatches.
+
+```csharp
+using Npgsql;
+using NpgsqlTypes;
+
+// WRONG - PostgreSQL sees this as VARCHAR (no length) or TEXT
+var cmd = new NpgsqlCommand("SELECT upsert_price_discount($1, $2, $3)", connection);
+cmd.Parameters.AddWithValue(priceProfile);  // Error: function does not exist
+
+// CORRECT - Use explicit type casts in SQL matching function signature
+var cmd = new NpgsqlCommand(@"
+    SELECT rocs.upsert_price_discount(
+        $1::VARCHAR(15),  -- price_profile
+        $2::VARCHAR(20),  -- sphkey1
+        $3::VARCHAR(10),  -- currency_code (nullable)
+        $4,               -- quantity (INTEGER - no cast needed)
+        $5                -- amount (NUMERIC - no cast needed)
+    )", connection);
+
+// Add parameters with explicit types
+cmd.Parameters.Add(new NpgsqlParameter { Value = priceProfile, NpgsqlDbType = NpgsqlDbType.Varchar });
+cmd.Parameters.Add(new NpgsqlParameter { Value = sphkey1, NpgsqlDbType = NpgsqlDbType.Varchar });
+
+// Nullable VARCHAR - specify type for both value and NULL
+if (!string.IsNullOrEmpty(currencyCode))
+    cmd.Parameters.Add(new NpgsqlParameter { Value = currencyCode, NpgsqlDbType = NpgsqlDbType.Varchar });
+else
+    cmd.Parameters.Add(new NpgsqlParameter { Value = DBNull.Value, NpgsqlDbType = NpgsqlDbType.Varchar });
+
+cmd.Parameters.AddWithValue(quantity);  // INTEGER - Npgsql infers correctly
+cmd.Parameters.AddWithValue(amount);    // NUMERIC - Npgsql infers correctly
+
+await cmd.ExecuteNonQueryAsync();
+```
+
+**Complete Example with Function Definition**:
+
+```sql
+-- Function definition in PostgreSQL
+CREATE FUNCTION upsert_price_discount(
+    p_price_profile VARCHAR(15),
+    p_list_type VARCHAR(15),
+    p_sphkey1 VARCHAR(20),
+    p_currency_code VARCHAR(10),
+    p_quantity INTEGER,
+    p_amount NUMERIC(9,2)
+) RETURNS VOID AS $$
+BEGIN
+    -- function body
+END;
+$$ LANGUAGE plpgsql;
+```
+
+```csharp
+// Calling the function from C# with proper type casts
+await using var cmd = new NpgsqlCommand(@"
+    SELECT upsert_price_discount(
+        $1::VARCHAR(15), $2::VARCHAR(15), $3::VARCHAR(20), $4::VARCHAR(10),
+        $5, $6
+    )", connection);
+
+cmd.Parameters.Add(new NpgsqlParameter { Value = document.PriceProfile, NpgsqlDbType = NpgsqlDbType.Varchar });
+cmd.Parameters.Add(new NpgsqlParameter { Value = document.ListType, NpgsqlDbType = NpgsqlDbType.Varchar });
+cmd.Parameters.Add(new NpgsqlParameter { Value = document.Sphkey1, NpgsqlDbType = NpgsqlDbType.Varchar });
+
+// Nullable parameter
+if (!string.IsNullOrEmpty(document.CurrencyCode))
+    cmd.Parameters.Add(new NpgsqlParameter { Value = document.CurrencyCode, NpgsqlDbType = NpgsqlDbType.Varchar });
+else
+    cmd.Parameters.Add(new NpgsqlParameter { Value = DBNull.Value, NpgsqlDbType = NpgsqlDbType.Varchar });
+
+cmd.Parameters.AddWithValue(document.Quantity);
+cmd.Parameters.AddWithValue(document.Amount != 0 ? document.Amount : DBNull.Value);
+
+await cmd.ExecuteNonQueryAsync();
+```
+
+**Key Rules**:
+1. **VARCHAR parameters**: Always cast in SQL: `$1::VARCHAR(15)`
+2. **NULL VARCHAR parameters**: Use `NpgsqlDbType.Varchar` in C#
+3. **INTEGER/NUMERIC**: No cast needed - Npgsql infers correctly
+4. **TEXT parameters**: No cast needed (TEXT has no length restriction)
+
+**Common NpgsqlDbType values**:
+- `NpgsqlDbType.Varchar` - VARCHAR columns (required for type matching)
+- `NpgsqlDbType.Numeric` - NUMERIC/DECIMAL columns
+- `NpgsqlDbType.Integer` - INTEGER columns
+- `NpgsqlDbType.Date` - DATE columns
+- `NpgsqlDbType.Timestamp` - TIMESTAMP columns
+- `NpgsqlDbType.Text` - TEXT columns
+
+**Error symptoms**:
+- `function ... does not exist` with types like `character varying` instead of `varchar(n)`
+- Hint: "You might need to add explicit type casts"
+- This indicates missing `::VARCHAR(n)` casts in SQL
+
 ### PostgreSQL ODBC Access (Legacy)
 
 **Connection String**: ODBC DSN-based (specific DSN varies)

@@ -78,7 +78,7 @@ public bool Send(string? from, string? attachmentPath)
     try
     {
         var smtpClient = new SmtpClient("smtp.nisainternational.local");
-        var mailMessage = new MailMessage(
+        using var mailMessage = new MailMessage(  // ← IMPORTANT: using statement for disposal
             from ?? "services@ramsden-international.com",
             _to,
             _subject,
@@ -87,8 +87,7 @@ public bool Send(string? from, string? attachmentPath)
 
         if (!string.IsNullOrEmpty(attachmentPath) && File.Exists(attachmentPath))
         {
-            var attachment = new Attachment(attachmentPath);
-            mailMessage.Attachments.Add(attachment);
+            mailMessage.Attachments.Add(new Attachment(attachmentPath));  // ← Create inline
         }
 
         smtpClient.Send(mailMessage);
@@ -225,7 +224,7 @@ public bool SendWithZippedAttachmentAndAdditionalFiles(
     try
     {
         var smtpClient = new SmtpClient("smtp.nisainternational.local");
-        var mailMessage = new MailMessage(
+        using var mailMessage = new MailMessage(  // ← CRITICAL: using statement for disposal!
             from ?? "services@ramsden-international.com",
             _to,
             _subject,
@@ -241,8 +240,7 @@ public bool SendWithZippedAttachmentAndAdditionalFiles(
 
             if (File.Exists(zippedPath))
             {
-                var zipAttachment = new Attachment(zippedPath);
-                mailMessage.Attachments.Add(zipAttachment);
+                mailMessage.Attachments.Add(new Attachment(zippedPath));  // ← Create inline
             }
 
             if (deleteOriginal)
@@ -257,8 +255,7 @@ public bool SendWithZippedAttachmentAndAdditionalFiles(
         {
             if (!string.IsNullOrEmpty(attachmentPath) && File.Exists(attachmentPath))
             {
-                var attachment = new Attachment(attachmentPath);
-                mailMessage.Attachments.Add(attachment);
+                mailMessage.Attachments.Add(new Attachment(attachmentPath));  // ← Create inline
                 Console.WriteLine($"Added additional attachment: {attachmentPath}");
             }
         }
@@ -276,6 +273,7 @@ public bool SendWithZippedAttachmentAndAdditionalFiles(
     finally
     {
         // Clean up zip file after email is sent
+        // Note: With using statement above, file handles are released before we get here
         if (!string.IsNullOrEmpty(zippedPath) && File.Exists(zippedPath))
         {
             try
@@ -465,6 +463,53 @@ catch (SmtpException ex)
     throw;
 }
 ```
+
+### Pitfall 5: Undisposed MailMessage and Attachment Objects (CRITICAL!)
+**Problem:** Files remain locked after email is sent, even after 10+ minutes
+**Root Cause:** `MailMessage` and `Attachment` objects hold file handles that aren't released until garbage collection
+**Symptom:** `IOException: The process cannot access the file because it is being used by another process` when trying to delete temp files
+
+**WRONG WAY (leaks file handles):**
+```csharp
+var mailMessage = new MailMessage(from, to, subject, body);
+
+if (File.Exists(attachmentPath))
+{
+    var attachment = new Attachment(attachmentPath);  // Opens file handle
+    mailMessage.Attachments.Add(attachment);
+}
+
+smtpClient.Send(mailMessage);
+// File handles still open! Won't be released until GC runs
+```
+
+**RIGHT WAY (properly disposes):**
+```csharp
+using var mailMessage = new MailMessage(from, to, subject, body);  // ← using statement!
+
+if (File.Exists(attachmentPath))
+{
+    mailMessage.Attachments.Add(new Attachment(attachmentPath));  // ← Create inline, no variable
+}
+
+smtpClient.Send(mailMessage);
+// When using block exits, mailMessage.Dispose() is called
+// This automatically disposes all attachments in the collection
+// File handles are immediately released
+```
+
+**Why This Matters:**
+1. `Attachment` objects open file handles when created
+2. Without `using`, those handles stay open indefinitely (until GC runs)
+3. You can't delete files while handles are open
+4. Even with retry logic (5 attempts × 60 seconds), files stay locked
+5. `MailMessage.Dispose()` automatically disposes all attachments in its `Attachments` collection
+
+**Key Principle:**
+- Create `Attachment` objects **inline** (don't store in variables)
+- Let `MailMessage.Attachments` collection own them
+- Use `using` on `MailMessage` to ensure disposal
+- When `MailMessage` is disposed, all attachments are disposed too
 
 ## Required NuGet Packages
 

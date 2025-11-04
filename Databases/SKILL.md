@@ -768,6 +768,7 @@ catch (Exception ex)
 - Continue using ODBC
 - No native C# driver available
 - ODBC provides all needed features
+- You can run the CLI with "Y:\Data Warehouse\duckdb\duckdb.exe"
 
 **Exportmaster**
 - Continue using ODBC

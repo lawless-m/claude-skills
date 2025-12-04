@@ -7,11 +7,32 @@ description: C# static analysis tool for call graphs, unused code detection, imp
 
 CSharpener is a Roslyn-based static analysis tool that analyzes C# codebases to build call graphs, identify unused code, and help with refactoring decisions.
 
+## Quick Start for Claude
+
+**ALWAYS use this exact command format when invoking CSharpener:**
+
+```bash
+"Y:/CSharpDLLs/CSharpener/CSharpener.exe" <command> --solution "<path-to-solution>" --format console
+```
+
+**Key Requirements:**
+- Use forward slashes for the executable path: `Y:/CSharpDLLs/CSharpener/CSharpener.exe`
+- Use double quotes around paths
+- Use backslashes for Windows paths in --solution parameter
+- Don't search for the executable - use the path above directly
+
+**Common Commands:**
+- `analyze --solution <path> --format console --include-call-graph` - Full analysis with call graph
+- `unused --solution <path> --format console` - Find unused methods
+- `callers --solution <path> --method <name> --format console` - Find who calls a method
+- `dependencies --solution <path> --method <name> --format console` - Find method dependencies
+- `impact --solution <path> --method <name> --format console` - Analyze removal impact
+
 ## Executable Location
 
-`Y:\CSharpDLLs\CSharpener\CSharpener.exe`
+**Primary:** `Y:\CSharpDLLs\CSharpener\CSharpener.exe` (use `Y:/` with forward slashes in bash)
 
-**Note:** If the Y: drive is not available, the source code can be built from:
+**Fallback:** If the Y: drive is not available, the source code can be built from:
 - GitHub: https://github.com/lawless-m/CSharpener
 - Build: `dotnet build -c Release`
 - Output: `CSharpCallGraphAnalyzer\bin\Release\net9.0\win-x64\csharp-analyzer.exe`

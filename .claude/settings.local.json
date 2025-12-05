@@ -11,7 +11,8 @@
       "Bash(where:*)",
       "Bash(convert --version:*)",
       "Bash(git commit:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "WebFetch(domain:corrode.dev)"
     ],
     "deny": [],
     "ask": []

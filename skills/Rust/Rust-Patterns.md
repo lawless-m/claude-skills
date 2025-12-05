@@ -668,6 +668,508 @@ fn process_frame(frame: Frame) -> Result<Matte> {
 }
 ```
 
+## Defensive Programming
+
+These patterns leverage Rust's type system and compiler to prevent bugs at compile time rather than relying on runtime checks or comments like "this should never happen."
+
+### Pattern Matching Over Indexing
+
+**Problem:** Direct indexing can panic if assumptions about vector length are wrong.
+
+```rust
+// Wrong: coupling length check with indexing
+fn get_first_device(devices: &[Device]) -> Option<&Device> {
+    if !devices.is_empty() {
+        Some(&devices[0])  // Can still panic if someone modifies the code wrong
+    } else {
+        None
+    }
+}
+
+// Wrong: unchecked indexing with comment
+fn process_pixels(data: &[u8]) -> u8 {
+    // Assuming data always has at least 3 elements
+    data[0]  // Panic if assumption is violated
+}
+```
+
+**Solution:** Use pattern matching - compiler enforces safety across all code paths.
+
+```rust
+// Right: pattern matching guarantees safety
+fn get_first_device(devices: &[Device]) -> Option<&Device> {
+    match devices {
+        [first, ..] => Some(first),
+        [] => None,
+    }
+}
+
+// Right: destructure in match
+fn process_rgb_pixel(data: &[u8]) -> Result<(u8, u8, u8)> {
+    match data {
+        [r, g, b, ..] => Ok((*r, *g, *b)),
+        _ => Err(anyhow!("Expected at least 3 bytes for RGB")),
+    }
+}
+
+// Right: use iterator methods
+fn get_first_device(devices: &[Device]) -> Option<&Device> {
+    devices.first()
+}
+```
+
+**Benefit:** Compiler enforces that all cases are handled. No hidden panic paths.
+
+### Explicit Struct Construction
+
+**Problem:** Using `..Default::default()` means you'll silently miss new fields added during refactoring.
+
+```rust
+#[derive(Default)]
+struct CaptureConfig {
+    width: u32,
+    height: u32,
+    fps: u32,
+}
+
+// Wrong: if someone adds a new field, this code won't know
+fn create_config() -> CaptureConfig {
+    CaptureConfig {
+        width: 1920,
+        height: 1080,
+        ..Default::default()  // Silently uses defaults for any new fields
+    }
+}
+```
+
+**Solution:** Explicitly set all fields - compiler will error when fields are added.
+
+```rust
+// Right: compiler forces you to handle new fields
+fn create_config() -> CaptureConfig {
+    CaptureConfig {
+        width: 1920,
+        height: 1080,
+        fps: 30,  // Must explicitly set every field
+    }
+}
+
+// If someone adds a field later:
+struct CaptureConfig {
+    width: u32,
+    height: u32,
+    fps: u32,
+    format: PixelFormat,  // New field added
+}
+
+// The compiler will error on create_config() above, forcing you to decide
+// what value this field should have in this context
+```
+
+**Benefit:** Struct evolution causes compile errors where decisions are needed, not silent bugs.
+
+### Exhaustive Destructuring in Trait Implementations
+
+**Problem:** When implementing traits like `PartialEq`, referencing fields by name misses new fields.
+
+```rust
+struct Resolution {
+    width: u32,
+    height: u32,
+}
+
+// Wrong: if someone adds a field, this comparison is silently wrong
+impl PartialEq for Resolution {
+    fn eq(&self, other: &Self) -> bool {
+        self.width == other.width && self.height == other.height
+        // If someone adds `refresh_rate`, this won't compare it
+    }
+}
+```
+
+**Solution:** Destructure all fields explicitly - compiler catches new fields.
+
+```rust
+// Right: destructure forces handling of all fields
+impl PartialEq for Resolution {
+    fn eq(&self, other: &Self) -> bool {
+        let Resolution { width, height } = self;
+        let Resolution { width: other_width, height: other_height } = other;
+        width == other_width && height == other_height
+    }
+}
+
+// When someone adds a field:
+struct Resolution {
+    width: u32,
+    height: u32,
+    refresh_rate: u32,  // New field
+}
+
+// The destructuring above will fail to compile, forcing you to decide
+// if refresh_rate should be compared
+```
+
+**Benefit:** Cannot accidentally skip fields in comparisons or other trait implementations.
+
+### TryFrom Over From
+
+**Problem:** The `From` trait is meant to be infallible, but sometimes conversions can fail.
+
+```rust
+// Wrong: From should never panic, but this one does
+impl From<String> for Resolution {
+    fn from(s: String) -> Self {
+        let parts: Vec<&str> = s.split('x').collect();
+        Resolution {
+            width: parts[0].parse().unwrap(),   // Panics on invalid input
+            height: parts[1].parse().unwrap(),  // Panics on invalid input
+        }
+    }
+}
+
+// Usage looks infallible but isn't
+let res = Resolution::from("1920x1080".to_string());  // Works
+let res = Resolution::from("invalid".to_string());    // PANIC!
+```
+
+**Solution:** Use `TryFrom` for fallible conversions.
+
+```rust
+// Right: TryFrom signals that conversion can fail
+impl TryFrom<String> for Resolution {
+    type Error = anyhow::Error;
+
+    fn try_from(s: String) -> Result<Self> {
+        let parts: Vec<&str> = s.split('x').collect();
+        if parts.len() != 2 {
+            anyhow::bail!("Expected format: WIDTHxHEIGHT");
+        }
+
+        let width = parts[0].parse()
+            .context("Invalid width")?;
+        let height = parts[1].parse()
+            .context("Invalid height")?;
+
+        Ok(Resolution { width, height })
+    }
+}
+
+// Usage makes error handling explicit
+let res = Resolution::try_from("1920x1080".to_string())?;
+let res = Resolution::try_from("invalid".to_string())
+    .context("Failed to parse resolution")?;
+```
+
+**Benefit:** Type system communicates whether operations can fail. No hidden panics.
+
+### Exhaustive Pattern Matching
+
+**Problem:** Catch-all patterns (`_`) hide when new enum variants are added.
+
+```rust
+enum DeviceState {
+    Idle,
+    Capturing,
+    Processing,
+}
+
+// Wrong: if someone adds a new state, this code won't handle it
+fn handle_state(state: DeviceState) {
+    match state {
+        DeviceState::Idle => start_capture(),
+        _ => {}  // Silently ignores Capturing and Processing
+                 // Will also silently ignore any new states added later
+    }
+}
+```
+
+**Solution:** Match all variants explicitly - compiler warns about new variants.
+
+```rust
+// Right: exhaustive matching
+fn handle_state(state: DeviceState) {
+    match state {
+        DeviceState::Idle => start_capture(),
+        DeviceState::Capturing => continue_capture(),
+        DeviceState::Processing => wait_for_processing(),
+    }
+}
+
+// When someone adds a variant:
+enum DeviceState {
+    Idle,
+    Capturing,
+    Processing,
+    Error { message: String },  // New variant
+}
+
+// The compiler will error on handle_state() above:
+// "non-exhaustive patterns: `Error { .. }` not covered"
+```
+
+**Alternative:** If you really want to handle some cases the same way, be explicit:
+
+```rust
+// Right: explicitly group cases, but compiler still checks exhaustiveness
+fn should_display_indicator(state: &DeviceState) -> bool {
+    match state {
+        DeviceState::Idle => false,
+        DeviceState::Capturing | DeviceState::Processing => true,
+        DeviceState::Error { .. } => false,
+    }
+}
+```
+
+**Benefit:** Compiler forces you to consider new variants when they're added.
+
+**Clippy Lint:** Enable `clippy::wildcard_enum_match_arm` to catch this automatically.
+
+### Enums Over Boolean Parameters
+
+**Problem:** Boolean parameters don't document their meaning at call sites.
+
+```rust
+// Wrong: what does 'true' mean here?
+start_capture(device, true);
+start_capture(device, false);
+
+// Wrong: unclear function signature
+fn start_capture(device: Device, wait: bool) {
+    // ...
+}
+```
+
+**Solution:** Use descriptive enums instead.
+
+```rust
+// Right: self-documenting
+enum CaptureMode {
+    Blocking,
+    NonBlocking,
+}
+
+fn start_capture(device: Device, mode: CaptureMode) {
+    match mode {
+        CaptureMode::Blocking => {
+            // Wait for first frame
+        }
+        CaptureMode::NonBlocking => {
+            // Return immediately
+        }
+    }
+}
+
+// Usage is clear
+start_capture(device, CaptureMode::Blocking);
+start_capture(device, CaptureMode::NonBlocking);
+```
+
+**More Examples:**
+
+```rust
+// Wrong
+fn resize_image(img: &Image, width: u32, height: u32, high_quality: bool);
+
+// Right
+enum ResizeQuality {
+    Fast,
+    HighQuality,
+}
+fn resize_image(img: &Image, width: u32, height: u32, quality: ResizeQuality);
+
+// Wrong
+fn connect(addr: &str, encrypted: bool, verify: bool);
+
+// Right
+enum Encryption { Enabled, Disabled }
+enum CertificateVerification { Strict, Permissive }
+fn connect(addr: &str, encryption: Encryption, verification: CertificateVerification);
+```
+
+**Benefit:** Code is self-documenting. Adding new modes is a breaking change (good!), not a silent behavior change.
+
+### Temporary Mutability with Shadowing
+
+**Problem:** Variables that should become immutable after initialization stay mutable.
+
+```rust
+// Wrong: data stays mutable even after initialization
+fn process_config() -> Result<Config> {
+    let mut config = Config::default();
+    config.load_from_file("config.toml")?;
+    config.apply_defaults();
+
+    // config is still mutable here, but shouldn't be modified
+    process_with_config(&config);  // Could accidentally modify
+    Ok(config)
+}
+```
+
+**Solution:** Shadow with immutable binding after initialization.
+
+```rust
+// Right: explicitly transition to immutable
+fn process_config() -> Result<Config> {
+    let mut config = Config::default();
+    config.load_from_file("config.toml")?;
+    config.apply_defaults();
+
+    let config = config;  // Shadow with immutable binding
+
+    // Compiler prevents accidental modification
+    // config.field = value;  // ERROR: cannot assign to immutable variable
+    process_with_config(&config);
+    Ok(config)
+}
+```
+
+**Benefit:** Makes mutation windows explicit and minimal. Prevents accidental modification.
+
+### Must-Use Annotations
+
+**Problem:** Important return values get accidentally ignored.
+
+```rust
+// Wrong: Result can be silently ignored
+fn validate_config(config: &Config) -> Result<()> {
+    // Validation logic
+    Ok(())
+}
+
+// Oops, forgot to check the result
+validate_config(&config);  // No warning if Result is ignored
+start_capture();  // Proceeds even if validation failed
+```
+
+**Solution:** Use `#[must_use]` attribute to force handling.
+
+```rust
+// Right: compiler warns if Result is ignored
+#[must_use = "validation must be checked before proceeding"]
+fn validate_config(config: &Config) -> Result<()> {
+    // Validation logic
+    Ok(())
+}
+
+// Now this produces a compiler warning:
+validate_config(&config);  // warning: unused `Result` that must be used
+
+// Must explicitly handle
+validate_config(&config)?;  // Right
+let _ = validate_config(&config);  // Explicitly ignored (if intended)
+```
+
+**Common Uses:**
+
+```rust
+#[must_use = "frame must be written or dropped explicitly"]
+fn capture_frame(&mut self) -> Result<Frame> {
+    // ...
+}
+
+#[must_use = "lock must be held or explicitly dropped"]
+fn lock(&self) -> MutexGuard<'_, T> {
+    // ...
+}
+
+#[must_use]
+struct FrameBuffer {
+    // RAII resource that should not be created and dropped immediately
+}
+```
+
+**Note:** `Result` and `Option` are already `#[must_use]` by default in Rust.
+
+**Benefit:** Compiler prevents accidentally ignoring important values.
+
+### Constructor Enforcement with Private Fields
+
+**Problem:** Public fields allow invalid states to be constructed.
+
+```rust
+// Wrong: can create invalid resolution
+pub struct Resolution {
+    pub width: u32,
+    pub height: u32,
+}
+
+// Can create 0x0 resolution, which makes no sense
+let invalid = Resolution { width: 0, height: 0 };
+```
+
+**Solution:** Use private fields and validated constructor.
+
+```rust
+// Right: enforce validation through constructor
+pub struct Resolution {
+    width: u32,   // Private
+    height: u32,  // Private
+}
+
+impl Resolution {
+    pub fn new(width: u32, height: u32) -> Result<Self> {
+        if width == 0 || height == 0 {
+            anyhow::bail!("Resolution dimensions must be non-zero");
+        }
+        if width > 8192 || height > 8192 {
+            anyhow::bail!("Resolution dimensions too large");
+        }
+        Ok(Self { width, height })
+    }
+
+    pub fn width(&self) -> u32 { self.width }
+    pub fn height(&self) -> u32 { self.height }
+}
+
+// Can only create valid resolutions
+let res = Resolution::new(1920, 1080)?;  // OK
+let res = Resolution::new(0, 0)?;        // Error
+```
+
+**Benefit:** Invalid states become unrepresentable. Validation happens once at construction.
+
+## Defensive Programming Tooling
+
+### Clippy Lints for Defensive Patterns
+
+Enable these in your `Cargo.toml` or `.clippy.toml`:
+
+```toml
+# Deny direct indexing
+clippy::indexing_slicing = "deny"
+
+# Warn on wildcard matches for enums
+clippy::wildcard_enum_match_arm = "warn"
+
+# Catch From impls that can panic
+clippy::fallible_impl_from = "deny"
+
+# Warn on wildcard imports
+clippy::wildcard_imports = "warn"
+```
+
+Or use in specific files:
+
+```rust
+#![deny(clippy::indexing_slicing)]
+#![deny(clippy::fallible_impl_from)]
+#![warn(clippy::wildcard_enum_match_arm)]
+```
+
+### Running Clippy with Strict Lints
+
+```bash
+# Check with extra lints
+cargo clippy -- -W clippy::pedantic -W clippy::nursery
+
+# Fix automatically where possible
+cargo clippy --fix -- -W clippy::pedantic
+
+# Deny all warnings (useful in CI)
+cargo clippy -- -D warnings
+```
+
 ## Common Patterns
 
 ### Builder Pattern

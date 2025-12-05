@@ -45,8 +45,11 @@ cd /home/matt/Git/VoE/qemu-vms
 qemu-system-x86_64 -name test-debian -m 1024 \
   -hda debian-12-generic-amd64.qcow2 \
   -netdev user,id=net0,hostfwd=tcp::2224-:22 -device e1000,netdev=net0 \
+  -enable-kvm -cpu host \
   -nographic
 ```
+
+**Important:** Always include `-enable-kvm -cpu host` for hardware acceleration. This provides significant performance improvements by using KVM virtualization support.
 
 ### Starting Server + Client Pair
 
@@ -92,6 +95,47 @@ ssh -p 2222 claude@localhost
 ```bash
 ssh -p 2224 debian@localhost
 ```
+
+### Manually Injecting SSH Keys
+
+If a VM is configured for key-only SSH authentication (or you want to add your key without password login), you can manually inject the SSH key by mounting the disk image on the host:
+
+```bash
+# Load the nbd kernel module if not already loaded
+sudo modprobe nbd max_part=8
+
+# Connect the qcow2 image to a network block device
+sudo qemu-nbd --connect=/dev/nbd0 /home/matt/Git/VoE/qemu-vms/debian-12-generic-amd64.qcow2
+
+# Wait for the device to be ready
+sudo partprobe /dev/nbd0
+lsblk | grep nbd0
+
+# Mount the root partition (usually /dev/nbd0p1)
+sudo mkdir -p /mnt/debian
+sudo mount /dev/nbd0p1 /mnt/debian
+
+# Create .ssh directory if it doesn't exist
+sudo mkdir -p /mnt/debian/home/debian/.ssh
+
+# Add your public key
+cat ~/.ssh/id_rsa.pub | sudo tee -a /mnt/debian/home/debian/.ssh/authorized_keys
+
+# Set correct permissions (CRITICAL - SSH will reject wrong permissions)
+sudo chmod 700 /mnt/debian/home/debian/.ssh
+sudo chmod 600 /mnt/debian/home/debian/.ssh/authorized_keys
+sudo chown -R 1000:1000 /mnt/debian/home/debian/.ssh  # UID 1000 is typically the first user
+
+# Unmount and disconnect
+sudo umount /mnt/debian
+sudo qemu-nbd --disconnect /dev/nbd0
+```
+
+**Note:** This technique is useful when:
+- cloud-init ISO wasn't attached on first boot
+- VM is configured for key-only authentication
+- Password authentication is disabled in sshd_config
+- You need to recover access to a locked VM
 
 ## Network Configuration
 
@@ -328,6 +372,107 @@ sudo apt install -y build-essential
 pip3 install boofuzz
 ```
 
+## Building with AddressSanitizer (ASAN)
+
+AddressSanitizer is a powerful memory error detector useful for fuzzing and security testing. **Important:** ASAN requires glibc and will NOT work on Alpine Linux (which uses musl libc).
+
+### ASAN Compatibility
+
+| Distribution | libc | ASAN Support |
+|--------------|------|--------------|
+| **Debian** | glibc | ✅ Full support |
+| **Alpine** | musl | ❌ Not supported |
+
+**Use Debian VMs for any ASAN-instrumented builds.**
+
+### Building with ASAN (Example: NanoMQ)
+
+```bash
+# SSH to Debian VM
+ssh -p 2224 debian@localhost
+
+# Install build dependencies
+sudo apt update
+sudo apt install -y git cmake ninja-build build-essential
+
+# Clone without recursive submodules to save space
+git clone https://github.com/nanomq/nanomq.git
+cd nanomq
+
+# Only initialize essential submodules
+git submodule update --init --depth=1 nng
+
+# Create build directory
+mkdir build && cd build
+
+# Configure with ASAN flags
+cmake .. -G Ninja \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_C_FLAGS="-fsanitize=address -fno-omit-frame-pointer -g -O1" \
+  -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address" \
+  -DNNG_ENABLE_TLS=OFF \
+  -DENABLE_JWT=OFF \
+  -DENABLE_QUIC=OFF
+
+# Build
+ninja
+
+# Run with ASAN
+ASAN_OPTIONS="detect_leaks=1:abort_on_error=0:halt_on_error=0:print_stats=1" \
+  ./nanomq/nanomq start
+```
+
+### ASAN Options Explained
+
+```bash
+# Recommended ASAN environment variables
+export ASAN_OPTIONS="detect_leaks=1:abort_on_error=0:halt_on_error=0:print_stats=1"
+```
+
+- `detect_leaks=1` - Enable memory leak detection
+- `abort_on_error=0` - Don't abort on first error (useful for fuzzing)
+- `halt_on_error=0` - Continue execution after detecting errors
+- `print_stats=1` - Print memory allocation statistics
+
+### Disk Space Management
+
+VM disk images can fill up quickly when building large projects. Tips:
+
+**1. Clone without recursive submodules:**
+```bash
+# Don't do this on small VMs:
+git clone --recursive https://github.com/large-project/repo.git
+
+# Instead:
+git clone https://github.com/large-project/repo.git
+cd repo
+git submodule update --init --depth=1 essential-submodule
+```
+
+**2. Check disk usage:**
+```bash
+df -h
+du -sh ~/project/*
+```
+
+**3. Clean build artifacts:**
+```bash
+# CMake projects
+rm -rf build/
+# Or just clean object files
+find build/ -name "*.o" -delete
+```
+
+**4. Expand VM disk if needed:**
+```bash
+# On host - resize the qcow2 image
+qemu-img resize vm.qcow2 +2G
+
+# In VM - expand the filesystem
+sudo growpart /dev/sda 1
+sudo resize2fs /dev/sda1
+```
+
 ## Tips and Tricks
 
 ### Copying Files to/from VMs
@@ -495,6 +640,21 @@ ping -I eth1 192.168.100.1
 
 ---
 
-**Last Updated:** 2025-12-05  
-**Location:** `/home/matt/Git/VoE/qemu-vms/`  
+## Changelog
+
+**2025-12-05 (v2):**
+- Added hardware acceleration section (KVM/CPU host passthrough)
+- Added SSH key manual injection procedure using qemu-nbd
+- Added comprehensive ASAN build guide with Alpine/Debian compatibility notes
+- Added disk space management tips for constrained VMs
+- Documented git submodule best practices for space-limited builds
+- Added NanoMQ MQTT broker build example with ASAN instrumentation
+
+**2025-12-05 (v1):**
+- Initial documentation
+
+---
+
+**Last Updated:** 2025-12-05
+**Location:** `/home/matt/Git/VoE/qemu-vms/`
 **Script:** `./start-vms.sh` for quick two-VM setup

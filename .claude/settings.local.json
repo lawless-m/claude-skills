@@ -12,7 +12,9 @@
       "Bash(convert --version:*)",
       "Bash(git commit:*)",
       "Bash(git fetch:*)",
-      "WebFetch(domain:corrode.dev)"
+      "WebFetch(domain:corrode.dev)",
+      "Bash(ls:*)",
+      "Bash(git check-ignore:*)"
     ],
     "deny": [],
     "ask": []

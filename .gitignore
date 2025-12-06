@@ -9,3 +9,6 @@
 !commands/**
 !skills/
 !skills/**
+!sync-repo.bat
+!sync-repo.ps1
+!WINDOWS_SYNC_SETUP.md

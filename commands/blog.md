@@ -59,7 +59,7 @@ Post this? [draft / publish / tweak]
 If approved for publishing:
 
 1. Read the API key from `~/.claude/cyril-api-key`
-2. POST to `https://steponnopets.net/api/posts` with:
+2. POST to `https://steponnopets.net/cyril/api/posts` with:
 
 ```json
 {
@@ -73,7 +73,7 @@ If approved for publishing:
 
 Include header: `X-Cyril-Key: <api-key>`
 
-3. Report success with the post URL: `https://steponnopets.net/#/post/<slug>`
+3. Report success with the post URL: `https://steponnopets.net/cyril/#/post/<slug>`
 
 If saving as draft, set `"publish": false`.
 

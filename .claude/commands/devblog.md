@@ -72,7 +72,52 @@ Include header: `X-Cyril-Key: <api-key>`
 
 3. Report success with the post URL: `https://dw.ramsden-international.com/devblog/#/post/<slug>`
 
-If saving as draft, set `"publish": false`.
+4. Post to Teams:
+   - Read the webhook URL from `~/.claude/devblog-webhook-url.txt`
+   - POST an adaptive card to Teams with:
+
+```json
+{
+  "type": "message",
+  "attachments": [{
+    "contentType": "application/vnd.microsoft.card.adaptive",
+    "content": {
+      "type": "AdaptiveCard",
+      "version": "1.2",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": "📝 New Devblog Post",
+          "weight": "bolder",
+          "size": "large"
+        },
+        {
+          "type": "TextBlock",
+          "text": "Post title here",
+          "size": "medium",
+          "weight": "bolder",
+          "wrap": true
+        },
+        {
+          "type": "TextBlock",
+          "text": "First paragraph or summary of post",
+          "wrap": true,
+          "maxLines": 3
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.OpenUrl",
+          "title": "Read Post",
+          "url": "https://dw.ramsden-international.com/devblog/#/post/<slug>"
+        }
+      ]
+    }
+  }]
+}
+```
+
+If saving as draft, set `"publish": false` and skip the Teams notification.
 
 ### Example Topics
 

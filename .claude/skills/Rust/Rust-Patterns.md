@@ -1083,6 +1083,164 @@ struct FrameBuffer {
 
 **Benefit:** Compiler prevents accidentally ignoring important values.
 
+### Typestate Pattern Over Runtime Enums
+
+**Problem:** Runtime enum-based state machines allow invalid transitions at runtime. Forgetting a check or bypassing validation can lead to security vulnerabilities.
+
+```rust
+// Wrong: Runtime enum allows invalid states through programmer error
+enum ConnectionState {
+    Disconnected,
+    Connected,
+    Authenticated,
+}
+
+struct Connection {
+    state: ConnectionState,
+    // ... fields
+}
+
+impl Connection {
+    fn send_secure_command(&self, cmd: &str) -> Result<()> {
+        // Easy to forget this check, or check the wrong variant
+        match self.state {
+            ConnectionState::Authenticated => {
+                // Send command
+                Ok(())
+            }
+            _ => Err(anyhow!("Must be authenticated")),
+        }
+    }
+
+    // Someone could add a new method and forget to check state entirely
+    fn send_data(&self, data: &[u8]) -> Result<()> {
+        // Oops, no state check - security bug!
+        self.socket.write(data)?;
+        Ok(())
+    }
+}
+```
+
+**Solution:** Use the typestate pattern to encode valid states in the type system. Invalid transitions become compile-time errors.
+
+```rust
+// Right: Typestate makes invalid states unrepresentable
+
+// State types (zero-sized, no runtime cost)
+struct Disconnected;
+struct Connected;
+struct Authenticated;
+
+// Connection is generic over its state
+struct Connection<State> {
+    socket: TcpStream,
+    _state: std::marker::PhantomData<State>,
+}
+
+impl Connection<Disconnected> {
+    fn new() -> Self {
+        Self {
+            socket: /* ... */,
+            _state: PhantomData,
+        }
+    }
+
+    // Connect consumes self and returns a new type
+    fn connect(self, addr: &str) -> Result<Connection<Connected>> {
+        // Connect logic...
+        Ok(Connection {
+            socket: self.socket,
+            _state: PhantomData,
+        })
+    }
+}
+
+impl Connection<Connected> {
+    fn authenticate(self, credentials: &Credentials) -> Result<Connection<Authenticated>> {
+        // Auth logic...
+        Ok(Connection {
+            socket: self.socket,
+            _state: PhantomData,
+        })
+    }
+
+    fn disconnect(self) -> Connection<Disconnected> {
+        Connection {
+            socket: self.socket,
+            _state: PhantomData,
+        }
+    }
+}
+
+impl Connection<Authenticated> {
+    // This method ONLY exists for Authenticated connections
+    // Compiler prevents calling on wrong state - no runtime check needed
+    fn send_secure_command(&mut self, cmd: &str) -> Result<()> {
+        self.socket.write(cmd.as_bytes())?;
+        Ok(())
+    }
+
+    fn logout(self) -> Connection<Connected> {
+        Connection {
+            socket: self.socket,
+            _state: PhantomData,
+        }
+    }
+}
+
+// Usage - compiler enforces correct order
+let conn = Connection::new();
+// conn.send_secure_command("x");  // ERROR: method doesn't exist
+
+let conn = conn.connect("localhost:8080")?;
+// conn.send_secure_command("x");  // ERROR: method doesn't exist
+
+let mut conn = conn.authenticate(&creds)?;
+conn.send_secure_command("secret")?;  // OK - only valid here
+```
+
+**Security Benefits:**
+- Impossible to forget state checks - methods don't exist on wrong types
+- Impossible to bypass validation - type system enforces transitions
+- New contributors can't accidentally add insecure methods
+- State transitions are explicit and auditable
+
+**When to Use Typestate:**
+- Authentication/authorization flows
+- Cryptographic protocol states (handshake → encrypted)
+- Resource lifecycle (uninitialized → ready → disposed)
+- Transaction states (pending → committed/rolled back)
+- Any state machine where security depends on correct ordering
+
+**When Runtime Enums Are Fine:**
+- UI state (open/closed/minimized) - no security implications
+- Display modes - errors are not security-critical
+- States that need to be serialized/inspected at runtime
+
+**Advanced: Sealed Traits for State Groups**
+
+```rust
+// Allow some operations on multiple states without breaking safety
+mod private {
+    pub trait Sealed {}
+    impl Sealed for super::Connected {}
+    impl Sealed for super::Authenticated {}
+}
+
+trait ActiveConnection: private::Sealed {}
+impl ActiveConnection for Connected {}
+impl ActiveConnection for Authenticated {}
+
+impl<S: ActiveConnection> Connection<S> {
+    // Available to both Connected and Authenticated, but not Disconnected
+    fn ping(&mut self) -> Result<Duration> {
+        // ...
+    }
+}
+```
+
+**Benefit:** Compile-time enforcement of state-dependent behavior. Security bugs become type errors.
+
 ### Constructor Enforcement with Private Fields
 
 **Problem:** Public fields allow invalid states to be constructed.
@@ -1213,6 +1371,10 @@ let pipeline = PipelineBuilder::new()
 ```
 
 ### State Machine with Enums
+
+> **⚠️ Security Note:** For security-sensitive state machines (authentication, crypto,
+> transactions), use the **Typestate Pattern** instead—see Defensive Programming section.
+> Runtime enums are appropriate for UI/display states where errors aren't security-critical.
 
 ```rust
 enum PipelineState {

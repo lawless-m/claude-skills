@@ -22,6 +22,7 @@ Use **[Rust-Project-Setup.md](Rust-Project-Setup.md)** for:
 
 Use **[Rust-Patterns.md](Rust-Patterns.md)** for:
 - Trait-based abstractions for swappable implementations
+- **Typestate pattern for security-sensitive state machines** (compile-time state enforcement)
 - Error handling (anyhow vs thiserror)
 - CLI argument parsing with clap
 - Structured logging with tracing
@@ -29,6 +30,7 @@ Use **[Rust-Patterns.md](Rust-Patterns.md)** for:
 - Linux device I/O (v4l2, video processing)
 - Color space conversion (RGB to YUYV)
 - Testing patterns with mocks
+- Defensive programming patterns
 
 ## Quick Reference
 
@@ -38,6 +40,19 @@ Use **[Rust-Patterns.md](Rust-Patterns.md)** for:
 Is this a library?
 ├─ Yes → Use thiserror for typed errors
 └─ No (application) → Use anyhow with .context()
+```
+
+### State Machine Decision
+
+```
+Is this security-sensitive? (auth, crypto, transactions)
+├─ Yes → Use TYPESTATE pattern (compile-time enforcement)
+│        - State encoded in type system
+│        - Invalid transitions = compile errors
+│        - Methods only exist for valid states
+└─ No → Runtime enums are fine
+         - UI state, display modes
+         - States that need runtime inspection
 ```
 
 ### Common Dependencies

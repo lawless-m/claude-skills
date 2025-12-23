@@ -23,10 +23,9 @@ Write-Host "Starting sync at $timestamp on $hostname"
 # Function to run git commands
 function Invoke-Git {
     param([string]$Command)
-    $fullCommand = "& `"$GitPath`" $Command"
     Write-Host "Running: git $Command"
-    Invoke-Expression $fullCommand
-    return $LASTEXITCODE
+    $process = Start-Process -FilePath $GitPath -ArgumentList $Command.Split(' ') -NoNewWindow -Wait -PassThru
+    return $process.ExitCode
 }
 
 # Check for changes

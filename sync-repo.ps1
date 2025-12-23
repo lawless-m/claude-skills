@@ -7,8 +7,9 @@ param(
 )
 
 # Change to repository directory
-Set-Location $RepoPath
-if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
+try {
+    Set-Location $RepoPath -ErrorAction Stop
+} catch {
     Write-Error "Failed to change to repository directory: $RepoPath"
     exit 1
 }

@@ -138,6 +138,10 @@ command.Parameters.Add(new OdbcParameter("p1", minTimestamp));
 
 ### Exportmaster ODBC Access (DBISAM)
 
+documentation for the sql dialect is here
+
+https://www.elevatesoft.com/manual?action=topics&id=dbisam4&product=rsdelphi&version=XE&section=sql_reference
+
 **Connection String**: `DSN=Exportmaster`
 **Parameter Style**: `?` placeholders
 **Projects**: CRMPollerFixer, JordanPrice, CS-EM2Parquet

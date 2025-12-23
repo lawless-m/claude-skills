@@ -10,12 +10,19 @@ $ARGUMENTS - The topic or feature to write about
 
 You are writing a straightforward technical devblog post. Follow this process:
 
+### 0. Read the Blog Management Skill
+
+First, read `~/.claude/skills/Blog Management/SKILL.md` to understand the API endpoints, authentication, and post management workflows. This skill document covers all the technical details for creating and editing blog posts.
+
 ### 1. Check Repository Context
 
 Run `git remote get-url origin` to check the repository:
-- If it contains `github.com`, you can include a GitHub link
-- If it contains `gogs` or is internal, you can include a Gogs link
-- If not a git repo, discuss the work without linking
+- If it contains a repo URL (GitHub, Gogs, GitLab, etc.):
+  - Extract the repo name (e.g., `ReproSharepointer` from `dw.ramsden-international.com/gogs/matthew.heath/ReproSharepointer`)
+  - This becomes a **project tag**: `® ReproSharepointer`
+  - **IMPORTANT**: Ensure the full URL includes the correct path (e.g., `/gogs/` for Gogs repos)
+  - Include the repo link in the post
+- If not a git repo, discuss the work without linking or project tagging
 
 ### 2. Draft the Post
 
@@ -63,10 +70,13 @@ If approved for publishing:
   "title": "Post title here",
   "content": "Full markdown content",
   "repo": "GitHub or Gogs URL if applicable",
-  "tags": ["relevant", "tags"],
+  "tags": ["® RepoName", "other", "tags"],
   "publish": true
 }
 ```
+
+**Important:** If this repo has a remote URL, the **first tag** must be the project tag (`® RepoName`).
+This automatically creates/updates the project entry on the Projects page with a snippet from this post.
 
 Include header: `X-Cyril-Key: <api-key>`
 
@@ -118,6 +128,73 @@ Include header: `X-Cyril-Key: <api-key>`
 ```
 
 If saving as draft, set `"publish": false` and skip the Teams notification.
+
+### 5. Notify Teams (Published Posts Only)
+
+If the post was published (not draft), send a notification to Teams:
+
+1 The Teams Webhook URL is  https://ramsdenint.webhook.office.com/webhookb2/1ae61fef-7dad-4a3b-bec0-af1209727174@c7b28d7d-7e60-48f2-b69f-6a204be54d3a/IncomingWebhook/0c8e2d3c53244e2d90449935e8305a1b/6f7e4ab9-19b8-437d-8325-61c5c636516a/V2EQRFHFQuhQyfvTxGjyd6zcXISPYOg0KMhlN2h0SP5Zg1
+2. POST an Adaptive Card to the webhook URL:
+
+```json
+{
+  "type": "message",
+  "attachments": [
+    {
+      "contentType": "application/vnd.microsoft.card.adaptive",
+      "content": {
+        "type": "AdaptiveCard",
+        "version": "1.4",
+        "body": [
+          {
+            "type": "TextBlock",
+            "text": "New Devblog Post",
+            "weight": "Bolder",
+            "size": "Medium"
+          },
+          {
+            "type": "TextBlock",
+            "text": "Post Title Here",
+            "size": "Large",
+            "weight": "Bolder",
+            "wrap": true
+          },
+          {
+            "type": "TextBlock",
+            "text": "First paragraph or two of the post content as preview...",
+            "wrap": true,
+            "spacing": "Medium"
+          },
+          {
+            "type": "TextBlock",
+            "text": "Repository: [repo URL here]",
+            "size": "Small",
+            "wrap": true,
+            "spacing": "Small",
+            "isSubtle": true
+          }
+        ],
+        "actions": [
+          {
+            "type": "Action.OpenUrl",
+            "title": "Read Full Post",
+            "url": "https://dw.ramsden-international.com/devblog/#/post/<slug>"
+          },
+          {
+            "type": "Action.OpenUrl",
+            "title": "View Repository",
+            "url": "[repo URL here]"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+**Note:** Only include the repository TextBlock and "View Repository" action if the post has a repo URL. If there's no repo, omit both.
+
+3. Confirm Teams notification sent successfully
 
 ### Example Topics
 

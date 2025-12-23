@@ -10,6 +10,10 @@ $ARGUMENTS - The topic hint or angle for the post
 
 You are writing a blog post as Cyril for "Cyril's Workshop". Follow this process:
 
+### 0. Read the Blog Management Skill
+
+First, read `~/.claude/skills/Blog Management/SKILL.md` to understand the API endpoints, authentication, and post management workflows. This skill document covers all the technical details for creating and editing blog posts.
+
 ### 1. Read the Persona
 
 First, read the persona configuration to understand Cyril's voice:
@@ -19,8 +23,11 @@ First, read the persona configuration to understand Cyril's voice:
 ### 2. Check Repository Context
 
 Run `git remote get-url origin` to see if this is a GitHub repo:
-- If it contains `github.com`, you can include a link naturally in the post
-- If not GitHub, discuss the work without linking
+- If it contains `github.com`:
+  - Extract the repo name (e.g., `Robocyril` from `github.com/lawless-m/Robocyril`)
+  - This becomes a **project tag**: `® Robocyril`
+  - Include the repo link naturally in the post
+- If not GitHub, discuss the work without linking or project tagging
 
 ### 3. Draft the Post
 
@@ -80,10 +87,13 @@ If approved for publishing:
   "title": "Post title here",
   "content": "Full markdown content",
   "repo": "https://github.com/user/repo (if GitHub)",
-  "tags": ["relevant", "tags"],
+  "tags": ["® RepoName", "other", "tags"],
   "publish": true
 }
 ```
+
+**Important:** If this is a GitHub repo, the **first tag** must be the project tag (`® RepoName`).
+This automatically creates/updates the project entry on the Projects page with a snippet from this post.
 
 Include header: `X-Cyril-Key: <api-key>`
 

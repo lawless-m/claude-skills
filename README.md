@@ -11,8 +11,8 @@ A GitHub template repository containing reusable Claude Code skills and commands
 1. Click **"Use this template"** on GitHub
 2. Create your new repository
 3. Your project automatically includes:
-   - Skills in `skills/`
-   - Commands in `commands/`
+   - Skills in `.claude/skills/`
+   - Commands in `.claude/commands/`
 
 ### Available Commands
 
@@ -45,17 +45,16 @@ A GitHub template repository containing reusable Claude Code skills and commands
 ## Structure
 
 ```
-.claude/
-├── commands/           # Slash commands
-│   ├── commit.md
-│   ├── publish.md
-│   └── push.md
-├── skills/             # Domain-specific skills
-│   ├── Databases/
-│   │   ├── SKILL.md
-│   │   └── *.cs
-│   ├── Elasticsearch/
-│   └── ...
+your-project/
+├── .claude/
+│   ├── commands/
+│   │   ├── commit.md
+│   │   ├── publish.md
+│   │   └── push.md
+│   └── skills/
+│       ├── Databases/
+│       ├── Elasticsearch/
+│       └── ...
 ├── README.md
 └── spellbook.png
 ```
@@ -64,16 +63,7 @@ A GitHub template repository containing reusable Claude Code skills and commands
 
 Skills are markdown files that teach Claude domain-specific patterns. They're loaded automatically when relevant or can be explicitly invoked.
 
-Each skill has:
-- **YAML frontmatter** with name and description
-- **Instructions** - numbered guidelines for Claude
-- **Examples** - user/Claude dialogue patterns
-- **Reference code** - production-tested implementations
+## Source
 
-## Updating This Template
-
-Skills and commands are maintained at:
-- Internal: `gogs@dw.ramsden-international.com:matthew.heath/Claude-Skills.git`
-- Public: https://github.com/lawless-m/claude-skills
-
-Push to Gogs → automatically syncs to GitHub via post-receive hook.
+This template is maintained at:
+- https://github.com/lawless-m/claude-skills

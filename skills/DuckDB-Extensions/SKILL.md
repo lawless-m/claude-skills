@@ -316,6 +316,82 @@ set_target_properties(mylib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 **Solution:** Ensure `add_dependencies(${TARGET_NAME} duckdb_platform)` is present
 
+## Deployment & Configuration
+
+### Extension Installation Path
+
+DuckDB looks for extensions in:
+```
+~/.duckdb/extensions/v{version}/{platform}/
+```
+
+For example:
+```
+~/.duckdb/extensions/v1.2.1/linux_amd64/myextension.duckdb_extension
+```
+
+Copy your built extension there for automatic discovery:
+```bash
+cp build/release/myextension.duckdb_extension ~/.duckdb/extensions/v1.2.1/linux_amd64/
+```
+
+### Auto-Loading with ~/.duckdbrc
+
+Create `~/.duckdbrc` to automatically load extensions and configure settings on startup:
+
+```sql
+-- Load extension (by name if installed in extensions path)
+LOAD 'myextension';
+
+-- Custom settings MUST come AFTER the LOAD
+SET myextension_host = 'server.example.com';
+SET myextension_port = 50051;
+```
+
+**Important**: Settings registered by an extension are only available AFTER the extension loads. Put `LOAD` first, then `SET`.
+
+### Wrapper Script for Unsigned Extensions
+
+During development, unsigned extensions require the `-unsigned` flag. Create a wrapper script to avoid forgetting:
+
+```bash
+#!/bin/bash
+# ~/.local/bin/duckdb - wrapper for unsigned extension support
+exec /path/to/actual/duckdb -unsigned "$@"
+```
+
+Make it executable and ensure `~/.local/bin` is in your PATH before the actual duckdb location.
+
+### Registering Custom Settings
+
+Extensions can register custom settings that users can configure:
+
+```cpp
+#include "duckdb/main/config.hpp"
+
+static void LoadInternal(DatabaseInstance &instance) {
+    auto &config = DBConfig::GetConfig(instance);
+
+    // Register string setting with default
+    config.AddExtensionOption("myextension_host", "Server hostname",
+                              LogicalType::VARCHAR, Value("localhost"));
+
+    // Register integer setting
+    config.AddExtensionOption("myextension_port", "Server port",
+                              LogicalType::INTEGER, Value(50051));
+
+    // Register functions...
+}
+```
+
+Access settings in your code:
+```cpp
+Value host_value, port_value;
+if (context.TryGetCurrentSetting("myextension_host", host_value)) {
+    std::string host = host_value.GetValue<std::string>();
+}
+```
+
 ## Best Practices Summary
 
 1. Always use exact version tags with FetchContent, never `main` or `master`
@@ -323,3 +399,5 @@ set_target_properties(mylib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 3. Test with the DuckDB binary from the same build before system DuckDB
 4. Use `GlobalTableFunctionState` for any mutable state during table function execution
 5. Set `POSITION_INDEPENDENT_CODE ON` for all static libraries linked into the extension
+6. Install extensions to `~/.duckdb/extensions/v{version}/{platform}/` for auto-discovery
+7. In `.duckdbrc`, always `LOAD` before `SET` for extension settings

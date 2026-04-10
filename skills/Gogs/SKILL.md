@@ -14,6 +14,7 @@ Interact with the Gogs instance at `https://dw.ramsden-international.com/gogs` v
 3. **Default repo**: Unless the user specifies otherwise, use `Gavin.Thompson/RI-REPO`.
 4. **Issue formatting**: Use markdown in issue bodies. Structure with `## Problem`, `## Proposed change`, `## Impact` sections where appropriate.
 5. **Don't guess issue numbers**: If you need to reference an existing issue, list them first.
+6. **No PR API**: This Gogs version does not support creating pull requests via the API (404 on `/pulls`). PRs must be created manually in the web UI. Push the branch, then give the user the compare URL: `$GOGS_URL/<owner>/<repo>/compare/master...<branch>`.
 
 ## Examples
 

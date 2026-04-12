@@ -55,6 +55,8 @@ The corpus is usually a **sibling** of the project repos (e.g. `~/Git/Flowstone-
 
 10. **Flowstone prototype limits.** The prototype does NOT support `[[target|display text]]` or `[[note#heading]]` section links (see Flowstone's `PROJECT.md` out-of-scope list). Use bare `[[target]]` only.
 
+11. **Casing convention.** Proper names keep their proper case: `[[SQLite]]`, `[[Oxygen-Not-Included]]`, `[[Clacker-News]]`, `[[Caturiel]]`, `[[StinkySpy]]`. Generic theme hubs are lowercase: `[[rust]]`, `[[bots]]`, `[[fuzzing]]`, `[[cli-tools]]`, `[[game-mods]]`, `[[claude-tooling]]`. If in doubt: does the word have an official capitalisation? Use it. Is it a common noun describing a category? Lowercase. Flowstone normalises to lowercase for matching (see `flowstone-spec/SCHEMA.md`), so casing is for human readers — but stay consistent so `[[SQLite]]` and `[[sqlite]]` don't drift apart across notes.
+
 ## Note templates
 
 ### Project note

@@ -49,6 +49,8 @@ The corpus is usually a **sibling** of the project repos (e.g. `~/Git/Flowstone-
 
 7. **Notes are small.** A project note is roughly: a one-line summary, a pointer to the source repo, a short paragraph, and a list of related links. Not a duplicate of the README. The README lives in the repo; the note lives in the graph.
 
+12. **Include deployment URLs and domains.** If a project is deployed as a web app or service, include the live URL in a `**URL:**` field as a plain link. The domain itself (e.g. `dw.ramsden-international.com`) is a meaningful graph node — link it separately with `[[...]]` in the body or Related section so the corpus tracks which projects are deployed where. Don't wrap the domain inside the URL field itself — keep the URL clean and readable.
+
 8. **Don't touch the source repo's README.** This skill creates new files in the corpus folder only. The repo's own README is out of scope.
 
 9. **Surface dangling links; don't silently create files.** After writing a note, list any `[[target]]` wiki-links whose note does not yet exist. Each dangling target is either (a) a hub or project note that should be created next, or (b) a typo. Report the list to the user; let them decide.
@@ -67,6 +69,7 @@ The corpus is usually a **sibling** of the project repos (e.g. `~/Git/Flowstone-
 One-sentence punch description with a couple of [[theme]] links and any sibling like [[OtherProject]] where relevant.
 
 **Repo:** `~/Git/ProjectName`
+**URL:** `https://example.com/path` *(if the project is deployed as a web app or service — include the live URL or domain)*
 **Themes:** [[theme-a]], [[theme-b]]
 
 Short paragraph (2–5 sentences) saying what the project does, why it exists, and what it talks to. Wrap sibling mentions and themes in `[[...]]` on first meaningful mention only.
@@ -126,6 +129,7 @@ A [[rust]] bot that monitors Reddit for anti-AI sentiment and posts
 Uriel-voiced commentary to [[Clacker-News]].
 
 **Repo:** `~/Git/Caturiel`
+**URL:** `https://[[clacker-news.example.com]]/` *(if deployed — omit if CLI-only or not hosted)*
 **Themes:** [[rust]], [[ollama]], [[bots]], [[Clacker-News]]
 
 Caturiel uses [[ollama]] (Qwen models) to pick what to post and to write

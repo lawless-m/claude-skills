@@ -77,6 +77,19 @@ curl -X POST http://localhost:3141/api/browser/execute \
   -d '{"script": "YOUR_JAVASCRIPT_HERE"}'
 ```
 
+**Two execution modes:**
+
+The extension has a small **allowlist** of literal patterns that are matched against the script string and dispatched to predefined handlers — this is what handles `document.title`, `document.querySelector('...')`, `document.querySelectorAll('...').length`, `document.getElementById('...')`, `document.URL`, `document.readyState`, `document.documentElement.outerHTML`. These are safe on any site.
+
+For **anything else** the script is **injected into the page's main world** via a `<script>` element and `eval`'d there. The page-context script wraps your code in an async IIFE, JSON-serialises the result (or error stack), and posts it back via `window.postMessage`. The content script forwards the parsed value via `sendResponse`.
+
+This means:
+- Reads of `window.*` (e.g. `window.__bf`, `typeof window.foo`) **work** on dev pages — they run in page context, not the extension's isolated world.
+- Arbitrary expressions (`1+1`, `JSON.stringify(state)`, calling functions you've attached to `window`) **work**.
+- Mutations (`el.innerText = "x"`, `location.hash = "x"`) **work**, but they happen in page context so any subsequent read needs a fresh request.
+- Page-side `await` is supported — the wrapper resolves promises before posting.
+- It only works on pages that don't themselves set a strict CSP. Most of the public web does set one, so this fallback is really for **your own dev pages**. If injection fails the bridge surfaces a 5-second `eval timeout` error.
+
 **Common Scripts:**
 
 Get page title:

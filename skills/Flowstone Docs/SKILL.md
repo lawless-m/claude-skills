@@ -70,7 +70,6 @@ One-sentence punch description with a couple of [[theme]] links and any sibling 
 
 **Repo:** `~/Git/ProjectName`
 **URL:** `https://example.com/path` *(if the project is deployed as a web app or service — include the live URL or domain)*
-**Themes:** [[theme-a]], [[theme-b]]
 
 Short paragraph (2–5 sentences) saying what the project does, why it exists, and what it talks to. Wrap sibling mentions and themes in `[[...]]` on first meaningful mention only.
 ```
@@ -113,7 +112,6 @@ Uriel-voiced commentary to [[Clacker-News]].
 
 **Repo:** `~/Git/Caturiel`
 **URL:** `https://[[clacker-news.example.com]]/` *(if deployed — omit if CLI-only or not hosted)*
-**Themes:** [[rust]], [[ollama]], [[bots]], [[Clacker-News]]
 
 Caturiel uses [[ollama]] (Qwen models) to pick what to post and to write
 the commentary. It persists seen-content state in SQLite and notifies via

@@ -73,12 +73,6 @@ One-sentence punch description with a couple of [[theme]] links and any sibling 
 **Themes:** [[theme-a]], [[theme-b]]
 
 Short paragraph (2–5 sentences) saying what the project does, why it exists, and what it talks to. Wrap sibling mentions and themes in `[[...]]` on first meaningful mention only.
-
-## Related
-
-- [[SiblingProject]] — one-line reason for the relationship
-- [[theme-a]]
-- [[theme-b]]
 ```
 
 ### Hub note
@@ -125,20 +119,13 @@ Caturiel uses [[ollama]] (Qwen models) to pick what to post and to write
 the commentary. It persists seen-content state in SQLite and notifies via
 ntfy.sh. The personality is deliberately terse and deadpan — it points
 out irony without cruelty.
-
-## Related
-
-- [[Clacker-News]] — the forum Caturiel posts to
-- [[rust]]
-- [[bots]]
-- [[ollama]]
 ```
 
 Notes on the example:
 
 - `Qwen`, `SQLite`, `ntfy.sh`, `Reddit` are left plain. They are external products, not corpus notes. Link them only if the user later creates hubs for them.
-- The `## Related` section deliberately repeats some inline links as a scannable edge list. Flowstone dedupes `(source, target)` pairs, so there's no cost.
 - `[[Clacker-News]]` is written as a theme hub — the forum itself, which multiple bots may post to. If only Caturiel ever posts there, consider demoting it to plain text.
+- There is no `## Related` section. All links live inline in the body text. Flowstone computes relationships from the wiki-links — a separate list just duplicates what the graph already knows and goes stale.
 
 ## What NOT to do
 

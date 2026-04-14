@@ -87,20 +87,9 @@ Short paragraph (2–5 sentences) saying what the project does, why it exists, a
 # rust
 
 Projects in this corpus written in Rust.
-
-## Members
-
-- [[Flowstone]] — CozoDB knowledge-graph CLI
-- [[Caturiel]] — Clacker News bot
-- [[Crabbit]] — rabbit-hutch tracker
-
-## Related themes
-
-- [[cli-tools]]
-- [[fuzzing]]
 ```
 
-Hub notes are mechanical: one paragraph of context, then a members list. Completeness of the members list is the virtue; prose is not. If a project note exists but its name isn't in the relevant hub's members list, that's a bug — fix it next time you're in the corpus.
+Hub notes are just a title and a short description paragraph. **Do not include members lists or related themes sections** — project notes link *to* the hub, so the graph already knows membership and relationships via inbound edges. Manually maintained lists go stale as projects are added and duplicate what Flowstone computes automatically.
 
 ## Procedure when writing a NEW project note
 

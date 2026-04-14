@@ -72,6 +72,15 @@ Claude: I'll query the PostgreSQL information schema:
 [Runs: Y:/CSharpDLLs/PgQuery/PgQuery.exe --config "R:/JsonParams/x3rocs_db.json" --sql "SELECT table_name FROM information_schema.tables WHERE table_schema = 'x3' AND table_name = 'contact'"]
 ```
 
+### Example 4: Export Query Results to Parquet
+```
+User: Export the customer table to a parquet file
+
+Claude: I'll export using the --parquet flag:
+
+[Runs: Y:/CSharpDLLs/PgQuery/PgQuery.exe --config "R:/JsonParams/x3rocs_db.json" --sql "SELECT * FROM x3.customer" --parquet "C:/tmp/customers.parquet"]
+```
+
 ---
 
 # Reference Implementation Details
@@ -92,9 +101,11 @@ Y:/CSharpDLLs/PgQuery/PgQuery.exe --config "<config-file>" --sql "<sql-statement
 ```
 
 **Parameters**:
-- `--config` (required): Path to PostgreSQL connection config JSON file
-- `--file`: Path to SQL file to execute
-- `--sql`: Inline SQL statement to execute
+- `--config` / `-c` (required): Path to PostgreSQL connection config JSON file
+- `--file` / `-f`: Path to SQL file to execute
+- `--sql` / `-s`: Inline SQL statement to execute
+- `--output` / `-o`: Write text output to a file
+- `--parquet` / `-p`: Write query results to a Parquet file (SELECT queries only)
 - Must specify either `--file` or `--sql`, not both
 
 ### Configuration File Format

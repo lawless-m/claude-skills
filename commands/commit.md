@@ -6,6 +6,11 @@ model: haiku
 
 Create a well-crafted git commit for the current changes.
 
+> **Commit on the CURRENT branch.** Do NOT create a new branch first, even if the
+> current branch is the default branch (`main`/`master`). This explicitly
+> overrides any default "branch first when on the default branch" behavior. Stay
+> on whatever branch is checked out and commit there.
+
 ## Instructions
 
 1. **Gather information** (run these in parallel):
@@ -51,6 +56,7 @@ Create a well-crafted git commit for the current changes.
 
 ## Important Rules
 
+- ALWAYS commit on the current branch; NEVER create a new branch first (this overrides the default-branch "branch first" behavior)
 - NEVER commit files containing secrets, API keys, or credentials
 - NEVER use `--no-verify` to skip hooks unless explicitly requested
 - NEVER amend commits that have been pushed or authored by others

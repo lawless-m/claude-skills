@@ -1,3 +1,7 @@
+---
+model: haiku
+---
+
 # Git Push Command
 
 Commit any pending changes and push to the remote repository.

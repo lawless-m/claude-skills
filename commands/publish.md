@@ -1,3 +1,7 @@
+---
+model: haiku
+---
+
 Run dotnet publish in release configuration:
 
 ```bash

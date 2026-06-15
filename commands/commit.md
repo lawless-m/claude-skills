@@ -1,3 +1,7 @@
+---
+model: haiku
+---
+
 # Git Commit Command
 
 Create a well-crafted git commit for the current changes.

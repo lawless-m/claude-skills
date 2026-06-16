@@ -176,6 +176,36 @@ var results = exportMasterOdbc.ExecuteAndMap(query, null, reader => new PriceDis
 - `PRICES` - Main pricing data
 - `PRICDETL` - Price detail records
 - `STOCK` - Product information
+- `CUSTOMER` - Customer records (incl. `Profile` + `UF_AltProf1..11` range-profile assignments)
+- `PROFILE` - Pricing profiles (`SppGroup`+`SppCode` key; `SppPrice1/2`, `SppDiscount1/2` = list types)
+
+#### DuckDB CLI access (preferred for ad-hoc queries)
+
+For ad-hoc reads, query the DBISAM databases through the DuckDB CLI instead of writing C#. DuckDB's `dbisam` extension ATTACHes the live Exportmaster databases read-only, so the tables are addressable as `sem01.<table>` and `sem04.<table>`.
+
+**Launcher**: `Y:\Data Warehouse\duckdb\duckdb.bat`
+It runs `duckdb.exe -unsigned --init init.sql`, and `init.sql` (`LOAD dbisam` + `ATTACH ...`) already wires up:
+- `sem01` → `rivsem01/NISAINT_CS` (live)  — read-only, `USER 'e3user'`, `COMPRESSION FALSE`
+- `sem04` → `rivsem04/NISAINT_CS`  — read-only
+
+**The CLI is already connected — no DSN, connection string, or parameters needed.** Just reference `sem01.<table>`.
+
+```bash
+# Ad-hoc query inline
+"Y:\Data Warehouse\duckdb\duckdb.bat" -c "SELECT * FROM sem01.profile WHERE SppCode = 'WAYPROMO'"
+
+# From a .sql script file (use .mode box for readable tables)
+"Y:\Data Warehouse\duckdb\duckdb.bat" -f query.sql
+
+# Inspect a table's columns
+"Y:\Data Warehouse\duckdb\duckdb.bat" -c "DESCRIBE sem01.profile"
+```
+
+Notes:
+- **Read-only** — for writes/updates use the e3 application or ODBC.
+- Identifiers are case-insensitive in DuckDB; DBISAM column casing (e.g. `SpdValue1`) is preserved in output but need not be matched on input.
+- Joins, aggregates, and `read_parquet()` overlays all work since it's full DuckDB on top of the live tables.
+- Example — verify a customer's per-customer discounts: join `sem01.prices`→`sem01.pricdetl` on `SphLink = SpdLink`, filter `SPHKEY1 = '<customer>'` and `SPHRT IN (144, 244)`.
 
 ### X3 MS SQL Server Access
 
@@ -775,8 +805,8 @@ catch (Exception ex)
 - You can run the CLI with "Y:\Data Warehouse\duckdb\duckdb.exe"
 
 **Exportmaster**
-- Continue using ODBC
-- Proprietary systems with limited driver options
+- For C# apps: continue using ODBC (`DSN=Exportmaster`) — proprietary system with limited driver options
+- For ad-hoc queries: use the DuckDB CLI (`Y:\Data Warehouse\duckdb\duckdb.bat`), which ATTACHes the live DBISAM databases read-only as `sem01.*` / `sem04.*` (see DuckDB CLI access above)
 
 **X3/Sage1000**
 - Microsoft SQL Server

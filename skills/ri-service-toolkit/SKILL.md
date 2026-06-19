@@ -65,10 +65,13 @@ When building or extending an RI service, follow these rules:
    date drives the Anthea lookup — not the date the service runs. Keep report context
    (names, codes, dates) distinct from generation time.
 
-8. **TinyWeb CGIs run as LocalSystem.** That account inherits the secret-store vault, so
-   credentials must be provisioned into **SYSTEM's** vault. `runas` cannot assume SYSTEM
-   (no password) — use a one-shot scheduled task instead (`schtasks /create /ru SYSTEM
-   /rl HIGHEST`) that runs the provisioning script. See Troubleshooting.
+8. **Any service password the CGI needs must live in KeePass, and its KDBX master key in
+   the secret store of the account the service runs as.** TinyWeb CGIs run as **LocalSystem**,
+   so the master key must be in **SYSTEM's** vault — the credential is per-user (DPAPI), so
+   provisioning it as your own login does nothing for the service. Don't reinvent the
+   provisioning steps: the **KeePass docs** (`Keepass-access-libs/csharp/USAGE.md`, §3) give
+   the exact recipe for getting master keys into each kind of vault, including the LocalSystem
+   one-shot scheduled-task method (`runas` can't assume SYSTEM). Follow that.
 
 9. **Publish self-contained, single-file, win-x64.** Deploy the one exe plus its
    `.properties` to `\\RIVSPROD02\RI Services\TinyWeb\www\cgi-bin\`. Always verify *live*
@@ -286,16 +289,13 @@ Invoke-WebRequest -Uri "https://dw.ramsden-international.com/tiny02/cgi-bin/Supe
 against sibling production code (MrsFlow) before inventing one.
 
 ### Credentials not found when running under TinyWeb
-**Cause:** TinyWeb runs as **LocalSystem**; the secret was provisioned into a *user* vault.
-**Solution:** Provision into SYSTEM's vault. `runas` can't assume SYSTEM — use a one-shot
-scheduled task:
-```bat
-schtasks /create /tn KdbxProvisionSystem /tr "powershell -File R:\kdbx\provision-credential.ps1" /ru SYSTEM /rl HIGHEST /sc ONCE /st 00:00 /f
-schtasks /run /tn KdbxProvisionSystem
-schtasks /delete /tn KdbxProvisionSystem /f
-```
-`provision-credential.ps1` uses `cmdkey` to write the master password into the vault under
-the `kdbx-services` key. The default key is **`kdbx-services`**, not `kdbx-master`.
+**Cause:** TinyWeb runs as **LocalSystem**; the KDBX master key was provisioned into a *user*
+vault (per-user DPAPI), so the service can't read it.
+**Solution:** Get the master key into **SYSTEM's** vault. The KeePass docs
+(`Keepass-access-libs/csharp/USAGE.md`, §3 + `R:\kdbx\provision-system.bat`) have the exact
+one-shot scheduled-task recipe — `runas` can't assume SYSTEM. Use the **`kdbx-services`**
+secret-store key (not `kdbx-master`). Because the secret lives in SYSTEM's vault, `cmdkey
+/list` as an admin won't show it — confirm by having the service itself read it.
 
 ### Anthea returns blanks for everything
 **Cause:** Customer code, delivery date, or array alignment is off.
@@ -311,5 +311,6 @@ not the request order.
 4. ExportKing does DML too; escape quotes by doubling.
 5. Anthea is best-effort and index-aligned; never let it sink the job.
 6. Report dates drive lookups, not the run clock.
-7. LocalSystem hosting ⇒ provision creds into SYSTEM's vault via schtasks.
+7. Service passwords in KeePass; master key in the run-as account's secret store
+   (LocalSystem ⇒ SYSTEM's vault) — follow the KeePass docs for provisioning.
 8. Publish self-contained single-file; deploy exe + properties; verify live.

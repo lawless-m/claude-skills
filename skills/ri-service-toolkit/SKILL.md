@@ -205,6 +205,39 @@ while (reader.Read()) { /* code, desc1, uf_ibarcode (the image barcode) */ }
 - `desc1` is the product description; `uf_ibarcode` is the barcode used to find its image.
 - For writes, use `cmd.ExecuteNonQuery()` — ExportKing supports DML.
 
+## DBISAM SQL dialect — check the DCG, don't guess
+
+DBISAM is **not** modern SQL, and the official Elevate docs don't fully match the
+engine. The authoritative spec is the **Dibdog DCG** — a formal, executable grammar of
+the *exact* DBISAM version we ship, reconciled against the live engine:
+
+- Repo: `C:\Users\matthew.heath\Git\Dibdog` (Gogs: `matthew.heath/Dibdog`).
+- Canonical grammar: `dbisam-dcg-project/grammar/dcg.pl` (the DCG wins over all prose).
+- Human-readable: `dbisam-dcg-project/railroad/grammar.ebnf` — one line per production;
+  read this to answer "is construct X accepted, and in what shape?".
+- Engine-verified function catalogue: `dbisam-dcg-project/docs/functions.md`.
+- Doc/engine/disassembly disagreements: `dbisam-dcg-project/docs/DIVERGENCES.md`.
+
+**Before writing any non-trivial DBISAM SQL, grep the EBNF / functions.md.** The dialect
+is SQL-89-baseline (no CTEs, no window functions; comma-form FROM is primary). Gotchas
+that bite — all confirmed against the engine:
+
+- **`TOP n` goes LAST, not after `SELECT`.** Clause order is
+  `WHERE → GROUP BY → HAVING → ORDER BY → TOP`. So `SELECT code FROM Product TOP 1`,
+  **never** `SELECT TOP 1 code …` (the latter is rejected, server code `0x2EAD`).
+- **No `TRIM`.** Only `LTRIM` / `RTRIM` exist — nest them (`LTRIM(RTRIM(x))`) for both
+  sides. `UPPER`/`LOWER`/`UCASE`/`LCASE`, `COALESCE`, `IF`, `SUBSTRING`, `POS` are fine.
+- **`SELECT` requires a `FROM`.** There is no `DUAL` / bare `SELECT 1` — a one-row scalar
+  probe must target a real table.
+- A rejected statement returns `IOException … server rejected the statement (code 0x2EAD)`
+  — that's a *syntax/dialect* rejection, distinct from `0x2C1E` (bad catalog).
+
+**ExportKing client caveat (not a dialect matter):** selecting **string literals as
+columns** (e.g. `SELECT 'ean' AS verdict, …`) can make ExportKing's reader throw
+`ReadRecordBlock record size N outside expected …` on the row-returning path. Return
+**real table columns only** and classify in the caller. Empty `uf_ibarcode` is `''`/NULL
+(no space-padding), so equality works without `TRIM`.
+
 ## Anthea pricing (`Pricing/AntheaClient.cs`)
 
 ```csharp

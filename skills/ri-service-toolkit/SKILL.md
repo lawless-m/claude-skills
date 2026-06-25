@@ -44,6 +44,21 @@ When building or extending an RI service, follow these rules:
    file's master password lives in the OS secret store under that key; the library reads it
    automatically. Never read the master password from config or source.
 
+   **The "OS secret store" is platform-specific, and on Linux it is `systemd` credentials —
+   not a keyring you can query ad-hoc.** On Linux the master password is a **root-only file at
+   `/etc/credstore/kdbx-services`**; the service unit declares
+   `LoadCredential=kdbx-services:/etc/credstore/kdbx-services`, systemd injects it into the
+   unit's private `$CREDENTIALS_DIRECTORY/kdbx-services`, and `KdbxCredentials` reads it from
+   there. **Consequence: a process NOT launched by systemd with that directive — a bare
+   `dotnet run`, a CLI like `kdbx-getfield`, an interactive shell — cannot read it.** There is
+   no ambient keyring/daemon to fall back to (the kernel/gnome keyring is empty by design), so
+   the lookup just returns nothing. For dev/manual runs, supply the secret another way (e.g. an
+   explicit connection string from env/config) and reserve the vault for the deployed systemd
+   service. RI's current Linux host is **systemd 247 with no `systemd-creds`**, so this is an
+   **unencrypted `LoadCredential`** (not `LoadCredentialEncrypted`). The proven reference unit
+   is `S3ImageCache/deploy/s3imagecache.service` (the `Keepass-access-libs/csharp` lib is the
+   same one Windows uses; only the credential delivery differs).
+
 4. **ExportKing is read/write.** It supports `SELECT` *and* DML (`INSERT`/`UPDATE`/`DELETE`
    via `ExecuteNonQuery`) with inline literals — escape single quotes by doubling them
    (`'` → `''`). Don't claim it's "SELECT only."

@@ -50,11 +50,29 @@ When building or extending an RI service, follow these rules:
    `LoadCredential=kdbx-services:/etc/credstore/kdbx-services`, systemd injects it into the
    unit's private `$CREDENTIALS_DIRECTORY/kdbx-services`, and `KdbxCredentials` reads it from
    there. **Consequence: a process NOT launched by systemd with that directive — a bare
-   `dotnet run`, a CLI like `kdbx-getfield`, an interactive shell — cannot read it.** There is
-   no ambient keyring/daemon to fall back to (the kernel/gnome keyring is empty by design), so
-   the lookup just returns nothing. For dev/manual runs, supply the secret another way (e.g. an
-   explicit connection string from env/config) and reserve the vault for the deployed systemd
-   service. RI's current Linux host is **systemd 247 with no `systemd-creds`**, so this is an
+   `dotnet run`, a CLI like `kdbx-getfield`, an interactive shell — can't read it by default.**
+   There is no ambient keyring/daemon to fall back to (the kernel/gnome keyring is empty by
+   design), so the lookup just returns nothing *unless you provide the directory yourself*.
+
+   **Dev/manual access (this comes up constantly).** The Linux store reads
+   `$CREDENTIALS_DIRECTORY/<secretStoreKey>` *verbatim* — there is no systemd magic beyond that
+   env var. So on a dev box you reproduce the vault by hand once, then set the env var per run
+   (it doesn't need to be systemd):
+
+   ```bash
+   mkdir -p ~/.ri-dev-creds && chmod 700 ~/.ri-dev-creds
+   # UTF-8, NO trailing newline — hence printf '%s', not echo:
+   printf '%s' 'MASTER_PASSWORD' > ~/.ri-dev-creds/kdbx-services && chmod 600 ~/.ri-dev-creds/kdbx-services
+   # now any tool/app works when launched with the env var set:
+   CREDENTIALS_DIRECTORY=~/.ri-dev-creds kdbx-getfield <db.kdbx> kdbx-services <group/entry> username
+   CREDENTIALS_DIRECTORY=~/.ri-dev-creds dotnet run --project src/Foo.Cli -- ...
+   ```
+
+   `kdbx-getfield` (usage: `getfield <db> <secretStoreKey> <entry> <field>`, fields:
+   username/password/url/notes) lives at `/usr/local/bin` and is handy for verifying the file
+   is right — read the *username* to prove the unlock without printing the password. Only the
+   master-password value itself is still a secret you must obtain; the mechanism is not.
+   RI's current Linux host is **systemd 247 with no `systemd-creds`**, so this is an
    **unencrypted `LoadCredential`** (not `LoadCredentialEncrypted`). The proven reference unit
    is `S3ImageCache/deploy/s3imagecache.service` (the `Keepass-access-libs/csharp` lib is the
    same one Windows uses; only the credential delivery differs).

@@ -60,18 +60,23 @@ When building or extending an RI service, follow these rules:
    (it doesn't need to be systemd):
 
    ```bash
-   mkdir -p ~/.ri-dev-creds && chmod 700 ~/.ri-dev-creds
+   mkdir -p ~/.config/ri-creds && chmod 700 ~/.config/ri-creds
    # UTF-8, NO trailing newline — hence printf '%s', not echo:
-   printf '%s' 'MASTER_PASSWORD' > ~/.ri-dev-creds/kdbx-services && chmod 600 ~/.ri-dev-creds/kdbx-services
+   printf '%s' 'MASTER_PASSWORD' > ~/.config/ri-creds/kdbx-services && chmod 600 ~/.config/ri-creds/kdbx-services
    # now any tool/app works when launched with the env var set:
-   CREDENTIALS_DIRECTORY=~/.ri-dev-creds kdbx-getfield <db.kdbx> kdbx-services <group/entry> username
-   CREDENTIALS_DIRECTORY=~/.ri-dev-creds dotnet run --project src/Foo.Cli -- ...
+   CREDENTIALS_DIRECTORY=~/.config/ri-creds kdbx-getfield <db.kdbx> kdbx-services <group/entry> username
+   CREDENTIALS_DIRECTORY=~/.config/ri-creds dotnet run --project src/Foo.Cli -- ...
    ```
 
    `kdbx-getfield` (usage: `getfield <db> <secretStoreKey> <entry> <field>`, fields:
    username/password/url/notes) lives at `/usr/local/bin` and is handy for verifying the file
    is right — read the *username* to prove the unlock without printing the password. Only the
    master-password value itself is still a secret you must obtain; the mechanism is not.
+   The RI vault password is constant, so provision this **once** and persist
+   `export CREDENTIALS_DIRECTORY="$HOME/.config/ri-creds"` in `~/.bashrc` **above** the
+   non-interactive guard (Debian's `.bashrc` `return`s early otherwise). On RI's Linux dev box
+   this is already set up; note non-interactive, non-login shells (some tool/cron invocations)
+   still don't source `.bashrc`, so there prefix the var or use `bash -lc`.
    RI's current Linux host is **systemd 247 with no `systemd-creds`**, so this is an
    **unencrypted `LoadCredential`** (not `LoadCredentialEncrypted`). The proven reference unit
    is `S3ImageCache/deploy/s3imagecache.service` (the `Keepass-access-libs/csharp` lib is the

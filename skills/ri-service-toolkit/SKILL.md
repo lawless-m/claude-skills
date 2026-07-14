@@ -1,6 +1,6 @@
 ---
 name: ri-service-toolkit
-description: Build a .NET 9 service from RI's shared components — ExportKing (DBISAM/Exportmaster), KdbxCredentials (KeePass), OhSheet (S3 product images), and Anthea (customer pricing) — deployed as a TinyWeb CGI running as LocalSystem.
+description: Build a .NET 9 service from RI's shared components — ExportKing (DBISAM/Exportmaster), KdbxCredentials (KeePass), OhSheet (S3 product images), and Anthea (customer pricing) — deployed as a TinyWeb CGI running as LocalSystem. Also covers registering any human-facing URL (service, liveboard, app) on the dw.ramsden-international.com portal page, which is the last step of every deployment.
 ---
 
 # RI Service Toolkit
@@ -115,6 +115,12 @@ When building or extending an RI service, follow these rules:
    `.properties` to `\\RIVSPROD02\RI Services\TinyWeb\www\cgi-bin\`. Always verify *live*
    with a real POST after deploying — claims of "it works" mean nothing until the deployed
    endpoint returns the expected bytes.
+
+10. **It isn't deployed until it's on the portal.** Anything with a human-facing URL — a
+    liveboard, a report page, an app — must get a card on
+    **https://dw.ramsden-international.com/**, or nobody will ever find it. Deploying the
+    files and stopping is the single most common way a finished thing goes unused. See
+    *The portal page* below.
 
 ## Examples
 
@@ -352,7 +358,98 @@ Invoke-WebRequest -Uri "https://dw.ramsden-international.com/tiny02/cgi-bin/Supe
   -Method Post -InFile example.txt -ContentType "text/plain" -OutFile out.xlsx
 ```
 
+## The portal page
+
+Everything human-facing at RI is indexed from one page: **https://dw.ramsden-international.com/**
+("Liveboards and Apps"). A service that isn't on it is, in practice, invisible. Adding a card is
+the last step of *every* deployment that produces a URL.
+
+**Where it lives — and the trap.** On **`vsprod`** (`RIVSPROD01`, reachable over SSH as `vsprod`):
+
+```
+/var/www/html/dw/index.html      -> SYMLINK to liveboards.html   <-- do NOT edit this
+/var/www/html/dw/liveboards.html <-- EDIT THIS, it's the real file
+```
+
+Editing `index.html` "works" only because it dereferences; edit the target so nothing is
+surprising later. Note the docroot is `/var/www/html/dw` but it is served at the **site root**,
+so the live page is `https://dw.ramsden-international.com/`, *not* `/dw/` (that 404s).
+
+**Back it up first — it's a hand-maintained production file with no repo behind it:**
+
+```bash
+ssh vsprod 'cd /var/www/html/dw && cp liveboards.html liveboards.html.bak-$(date +%Y%m%d-%H%M%S)'
+```
+
+**The card format.** Cards sit inside a `<div class="grid">` under a section `<h2>`
+(*Forecasting*, *Commercial*, …). Copy the shape exactly:
+
+```html
+    <a class="card" href="/tiny02/pibs/credits.html">
+      <span class="arrow">→</span>
+      <img class="thumb" src="/tiny02/pibs/credits.png" alt="" loading="lazy" onerror="this.remove()">
+      <div class="name">Credit Notes</div>
+      <div class="desc">Credit notes — value, reasons and rate by customer.</div>
+      <div class="meta"><span class="chip live">Liveboard</span></div>
+    </a>
+```
+
+- **`chip` classes:** `live` (liveboard), `app` (application), `exp` (experimental). Pick one.
+- **The thumbnail is optional** and carries `onerror="this.remove()"` so a missing image degrades
+  to a text-only card rather than a broken-image icon. Keep that attribute.
+- Images for TinyWeb boards live **flat** in `\\rivsprod02\RI Services\TinyWeb\www\pibs\`
+  (`suma.png`, `Sugro.png`, `credits.png`) and are referenced as `/tiny02/pibs/<name>.png`.
+
+**Write the `desc` like a library catalogue entry, not a press release.** One short line saying
+what the thing *is*. This is a portal — the reader is scanning twenty cards to find one. Match the
+neighbours (`"Sales — Suma."`, `"Weekly product availability."`). **Do not put findings, headline
+numbers, or conclusions on the card** — those belong on the board itself, and they go stale on the
+portal where nothing recomputes them.
+
+**Edit it as a file, not with `sed`.** A guarded Python replace is safest — it refuses to act
+twice and refuses to act on a missed anchor, so a re-run can't silently duplicate a card:
+
+```bash
+ssh vsprod 'python3 - <<EOF
+p = "/var/www/html/dw/liveboards.html"
+s = open(p, encoding="utf-8").read()
+anchor = """    <a class="card" href="/tiny02/pibs/sugro.html">"""   # insert BEFORE this card
+card = """    <a class="card" href="/tiny02/pibs/credits.html">
+      ...
+    </a>
+
+"""
+if "credits.html" in s:   print("ALREADY PRESENT - no change")
+elif anchor not in s:     print("ANCHOR NOT FOUND - no change")
+else:
+    open(p, "w", encoding="utf-8").write(s.replace(anchor, card + anchor, 1))
+    print("inserted")
+EOF'
+```
+
+**Then verify against the live page, not the file on disk:**
+
+```bash
+curl -s https://dw.ramsden-international.com/ | grep -A4 'credits.html'   # card is published
+curl -s -o /dev/null -w '%{http_code}\n' https://dw.ramsden-international.com/tiny02/pibs/credits.html
+curl -s -o /dev/null -w '%{http_code}\n' https://dw.ramsden-international.com/tiny02/pibs/credits.png
+```
+
+A card pointing at a 404 is worse than no card. Check the target **and** the thumbnail.
+
 ## Troubleshooting
+
+### New card doesn't show up on the portal
+**Cause:** usually one of four things, in order of likelihood.
+**Solution:**
+1. You edited a copy, not the live file. The real file is
+   `vsprod:/var/www/html/dw/liveboards.html`; `index.html` is a *symlink* to it.
+2. You checked the wrong URL. The page is served at the **site root**
+   (`https://dw.ramsden-international.com/`), not `/dw/` — that 404s, which looks like your
+   edit vanished.
+3. The insert anchor didn't match, so a `sed`/replace silently did nothing. Use a guarded
+   Python replace that *prints* when the anchor is missing (see *The portal page*).
+4. Browser cache. Confirm with `curl` against the live URL, never by reloading a tab.
 
 ### DBISAM connect fails with `0x2C1E`
 **Cause:** Wrong catalog — a filesystem path or made-up name was used.

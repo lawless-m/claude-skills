@@ -26,6 +26,11 @@ Two rules that carry the weight: **never write code on a `triage` issue** — th
 comment and stops there; and **never set `execute plan` yourself** — that label is Matthew's
 review, and setting it would be marking your own homework.
 
+**Re-read the thread before posting anything.** Run the sweep, or at minimum fetch the comments,
+immediately before you comment on an issue you have already commented on. Matthew answers on the
+issue while you are still working, and a reply that lands mid-investigation is invisible unless you
+go back and look — post without checking and you will contradict an answer you already had.
+
 Working a `triage` issue:
 
 1. Read the body properly — these are written fast, often dictated, so re-read for intent.

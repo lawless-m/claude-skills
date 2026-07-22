@@ -1,77 +1,102 @@
 ---
 name: Gogs
-description: Create and manage issues, query repos, and interact with the Gogs API on dw.ramsden-international.com
+description: Gitea issue tracker on dw.ramsden-international.com - the triage/plan/execute plan/fixed label workflow, plus creating, querying and commenting on issues via the REST API
 ---
 
-# Gogs Issue Tracker
+# Gitea Issue Tracker
 
-Interact with the Gogs instance at `https://dw.ramsden-international.com/gogs` via its REST API.
+The server at `https://dw.ramsden-international.com/gogs` is **Gitea 1.26.2** — upgraded from
+Gogs but it kept the `/gogs` URL path, the `$GOGS_*` env vars and this skill's name. Gitea API
+semantics apply (the same upgrade is why remotes need `git@`, not `gogs@`).
+
+## Issue workflow — labels drive the work
+
+Issues are worked through four labels. This is the process, not a suggestion: the label says what
+stage an issue is at and what you are allowed to do to it.
+
+| label | meaning | who moves it |
+|---|---|---|
+| `triage` | New. Investigate, then write a plan **as an issue comment**. Do NOT write code. | you → `plan` |
+| `plan` | Plan posted, waiting on a human to read it. | the human → `execute plan` |
+| `execute plan` | Approved. Now implement it. | you → `fixed` |
+| `fixed` | Implemented and committed. | — |
+
+`execute plan` is an **approval gate**. It exists so the plan gets read before any code is
+written, without the human having to be asked "shall I proceed?" every time. Never go from
+`triage` straight to code, and never set `execute plan` yourself.
+
+Working a `triage` issue:
+
+1. Read the body properly — these are written fast, often dictated, so re-read for intent.
+2. Investigate the real code and data before planning. **Check the issue's own premises**: the
+   reporter is describing a symptom, and their guess at where it lives is often slightly off. When
+   the evidence disagrees with the issue, say so in the plan rather than quietly building what was
+   asked for.
+3. Post the plan as a comment — what changes, in which files, what you found, and any open
+   question you need answered before it can be built.
+4. Relabel `triage` → `plan`.
+
+Working an `execute plan` issue: implement, commit referencing the issue number, comment with what
+was done and the commit sha, relabel → `fixed`. Leave the issue open unless asked to close it —
+`fixed` is the state; closing is the human's call.
+
+Label ids are per-repo, so **list them first, never hardcode**. On `matthew.heath/CagesWaitrose`
+they are triage=1, plan=2, fixed=3, execute plan=4.
 
 ## Instructions
 
 1. **Authentication**: Use the `$GOGS_TOKEN` environment variable (set in Claude settings.json). Pass it as `Authorization: token $GOGS_TOKEN` header.
 2. **Base URL**: Use `$GOGS_URL/api/v1` (defaults to `https://dw.ramsden-international.com/gogs/api/v1`).
-3. **Default repo**: Unless the user specifies otherwise, use `Gavin.Thompson/RI-REPO`.
+3. **Default repo**: Prefer the repo matching the working directory; otherwise `Gavin.Thompson/RI-REPO`.
 4. **Issue formatting**: Use markdown in issue bodies. Structure with `## Problem`, `## Proposed change`, `## Impact` sections where appropriate.
-5. **Don't guess issue numbers**: If you need to reference an existing issue, list them first.
-6. **No PR API**: This Gogs version does not support creating pull requests via the API (404 on `/pulls`). PRs must be created manually in the web UI. Push the branch, then give the user the compare URL: `$GOGS_URL/<owner>/<repo>/compare/master...<branch>`.
+5. **Don't guess issue or label numbers**: list them first.
+6. **Long bodies go in a file**: `-d @body.json`. Inline quoting of a multi-paragraph markdown body through the shell is where these calls usually break.
+7. **Piping JSON into python**: set `PYTHONIOENCODING=utf-8`, or box-drawing characters and curly quotes in issue bodies blow up on Windows cp1252.
 
 ## Examples
 
-### Example 1: Create an issue
-```
-User: Create a Gogs issue about the broken login page
-
-Claude: Reads token from config.toml, then:
-
-curl -s -X POST "https://dw.ramsden-international.com/gogs/api/v1/repos/Gavin.Thompson/RI-REPO/issues" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: token <token>" \
-  -d '{"title": "Fix broken login page", "body": "## Problem\n\n..."}'
+### Example 1: List open issues with their labels
+```bash
+curl -s "$GOGS_URL/api/v1/repos/matthew.heath/CagesWaitrose/issues?state=open" \
+  -H "Authorization: token $GOGS_TOKEN" | PYTHONIOENCODING=utf-8 python -c "
+import json,sys
+for i in json.load(sys.stdin):
+    print('#%s [%s] %s' % (i['number'], ','.join(l['name'] for l in i.get('labels') or []), i['title']))
+"
 ```
 
-### Example 2: List open issues
+### Example 2: Post a plan, then move triage → plan
+```bash
+# 1. the plan comment (body in a file — it will be long)
+curl -s -X POST "$GOGS_URL/api/v1/repos/matthew.heath/CagesWaitrose/issues/1/comments" \
+  -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
+  -d @plan.json
+
+# 2. PUT replaces the whole label set, so pass the full desired set
+curl -s -X PUT "$GOGS_URL/api/v1/repos/matthew.heath/CagesWaitrose/issues/1/labels" \
+  -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
+  -d '{"labels":[2]}'
 ```
-User: What issues are open on the repo?
 
-Claude:
-
-curl -s "https://dw.ramsden-international.com/gogs/api/v1/repos/Gavin.Thompson/RI-REPO/issues?state=open" \
-  -H "Authorization: token <token>"
+### Example 3: Create an issue
+```bash
+curl -s -X POST "$GOGS_URL/api/v1/repos/Gavin.Thompson/RI-REPO/issues" \
+  -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
+  -d '{"title": "Fix broken login page", "body": "## Problem\n\n...", "labels": [1]}'
 ```
 
-### Example 3: Close an issue
-```
-User: Close issue #5
-
-Claude:
-
-curl -s -X PATCH "https://dw.ramsden-international.com/gogs/api/v1/repos/Gavin.Thompson/RI-REPO/issues/5" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: token <token>" \
+### Example 4: Close an issue
+```bash
+curl -s -X PATCH "$GOGS_URL/api/v1/repos/Gavin.Thompson/RI-REPO/issues/5" \
+  -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
   -d '{"state": "closed"}'
 ```
 
-### Example 4: Add a comment to an issue
-```
-User: Comment on issue #3 that the fix is deployed
-
-Claude:
-
-curl -s -X POST "https://dw.ramsden-international.com/gogs/api/v1/repos/Gavin.Thompson/RI-REPO/issues/3/comments" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: token <token>" \
+### Example 5: Add a comment
+```bash
+curl -s -X POST "$GOGS_URL/api/v1/repos/Gavin.Thompson/RI-REPO/issues/3/comments" \
+  -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
   -d '{"body": "Fix deployed to production."}'
-```
-
-### Example 5: Create an issue on a different repo
-```
-User: Create an issue on matthew.heath/other-repo about ...
-
-Claude: Same pattern but with the specified owner/repo path:
-
-curl -s -X POST "https://dw.ramsden-international.com/gogs/api/v1/repos/matthew.heath/other-repo/issues" \
-  ...
 ```
 
 ---
@@ -88,16 +113,31 @@ In curl commands, reference them directly: `$GOGS_TOKEN` and `$GOGS_URL`.
 
 | Action | Method | Endpoint |
 |--------|--------|----------|
+| Server version | GET | `/version` |
 | List issues | GET | `/repos/:owner/:repo/issues?state=open` |
+| Get one issue | GET | `/repos/:owner/:repo/issues/:index` |
 | Create issue | POST | `/repos/:owner/:repo/issues` |
-| Edit issue | PATCH | `/repos/:owner/:repo/issues/:id` |
-| Close issue | PATCH | `/repos/:owner/:repo/issues/:id` with `{"state":"closed"}` |
-| Add comment | POST | `/repos/:owner/:repo/issues/:id/comments` |
-| List comments | GET | `/repos/:owner/:repo/issues/:id/comments` |
+| Edit issue | PATCH | `/repos/:owner/:repo/issues/:index` |
+| Close issue | PATCH | `/repos/:owner/:repo/issues/:index` with `{"state":"closed"}` |
+| Add comment | POST | `/repos/:owner/:repo/issues/:index/comments` |
+| List comments | GET | `/repos/:owner/:repo/issues/:index/comments` |
+| **Replace an issue's labels** | PUT | `/repos/:owner/:repo/issues/:index/labels` with `{"labels":[id,…]}` |
+| Add labels, keeping existing | POST | `/repos/:owner/:repo/issues/:index/labels` with `{"labels":[id,…]}` |
+| Remove one label | DELETE | `/repos/:owner/:repo/issues/:index/labels/:id` |
+| List repo labels | GET | `/repos/:owner/:repo/labels` |
+| Create label | POST | `/repos/:owner/:repo/labels` |
 | List repos | GET | `/user/repos` |
 | Get repo | GET | `/repos/:owner/:repo` |
-| List labels | GET | `/repos/:owner/:repo/labels` |
-| Create label | POST | `/repos/:owner/:repo/labels` |
+
+`:index` is the **issue number** shown in the UI (`#2`), not the `id` field in the JSON — they
+differ (issue `#2` came back with `"id": 17`).
+
+## Pull requests
+
+The old Gogs build 404'd on `/pulls`; **Gitea 1.26 serves it** — `GET /repos/:owner/:repo/pulls`
+returns 200. Creating one via `POST /pulls` has not been exercised here, so if it fails, fall back
+to pushing the branch and handing over the compare URL:
+`$GOGS_URL/<owner>/<repo>/compare/master...<branch>`.
 
 ## Create Issue Body
 
@@ -110,4 +150,4 @@ In curl commands, reference them directly: `$GOGS_TOKEN` and `$GOGS_URL`.
 }
 ```
 
-Labels and assignee are optional. Label values are numeric IDs (list them first to find IDs).
+Labels and assignee are optional. Label values are numeric ids (list them first to find ids).

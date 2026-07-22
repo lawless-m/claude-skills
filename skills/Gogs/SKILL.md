@@ -37,6 +37,46 @@ Working a `triage` issue:
    you need answered before it can be built.
 4. Relabel `triage` → `plan`.
 
+**A plan usually has open questions in it, and answering them does not change the label.** The
+issue stays on `plan` through the whole back-and-forth — you ask, Matthew answers in a comment, you
+post a *revised* plan as a new comment (never edit the old one; the history is the point). `plan`
+means "we are still settling the plan", whoever it is waiting on. It moves exactly once, when
+Matthew is happy with it, and only he moves it.
+
+Whose turn it is on a `plan` issue is therefore **not** in the label — it's the author of the last
+comment. That only works because you post as `claude` (below), so check that before relying on it.
+
+### Post as `claude`, not as Matthew
+
+`$GOGS_TOKEN` is Matthew's account and he is a site admin, so **every write must carry
+`-H "Sudo: claude"`** — comments, label changes, issue edits. Without it your comments are authored
+`matthew.heath` and the issue history reads as him talking to himself, which also destroys the
+turn-detection above. Reads don't need it.
+
+```bash
+curl -s -X POST "$GOGS_URL/api/v1/repos/$REPO/issues/1/comments" \
+  -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
+  -H "Sudo: claude" -d @comment.json
+```
+
+Verify with the response's `user.login`, which should read `claude`. Authorship cannot be changed
+after the fact, so get it right on the first post.
+
+### Sweeping for what's yours
+
+`sweep.py` (next to this file) lists the open issues split into yours and Matthew's, using the
+labels plus the last-comment author:
+
+```bash
+PYTHONIOENCODING=utf-8 python ~/.claude/skills/Gogs/sweep.py matthew.heath/CagesWaitrose
+```
+
+Yours are `triage` (plan it), `execute plan` (build it), `fix failed` (re-plan it), and any `plan`
+issue whose last comment is Matthew's (he has answered — revise the plan). A `plan` issue whose
+last comment is `claude` is with him; leave it alone.
+
+Nothing polls this. The sweep runs when asked, or from a scheduled agent if one is ever set up.
+
 Working an `execute plan` issue: implement it, commit referencing the issue number, comment with
 what was done and the commit sha, and relabel → `fixed`. If it doesn't work — the plan turns out to
 be wrong, or the fix doesn't hold — relabel → `fix failed` and comment with what went wrong rather

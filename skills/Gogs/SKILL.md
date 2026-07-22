@@ -11,37 +11,44 @@ semantics apply (the same upgrade is why remotes need `git@`, not `gogs@`).
 
 ## Issue workflow — labels drive the work
 
-Issues are worked through four labels. This is the process, not a suggestion: the label says what
-stage an issue is at and what you are allowed to do to it.
+Matthew's process, in his words. The label says what stage an issue is at and whose turn it is.
+A label is not a trigger — nothing polls the tracker; you act on labels when asked to look.
 
-| label | meaning | who moves it |
+| label | means | next |
 |---|---|---|
-| `triage` | New. Investigate, then write a plan **as an issue comment**. Do NOT write code. | you → `plan` |
-| `plan` | Plan posted, waiting on a human to read it. | the human → `execute plan` |
-| `execute plan` | Approved. Now implement it. | you → `fixed` |
-| `fixed` | Implemented and committed. | — |
+| `triage` | You read it and come up with a plan. | you post the plan, set `plan` |
+| `plan` | Matthew reviews the plan. | he sets `execute plan` |
+| `execute plan` | You execute the plan. | you set `fixed`, or `fix failed` |
+| `fixed` | Executed and committed. | — |
+| `fix failed` | It didn't work. | back to planning |
 
-`execute plan` is an **approval gate**. It exists so the plan gets read before any code is
-written, without the human having to be asked "shall I proceed?" every time. Never go from
-`triage` straight to code, and never set `execute plan` yourself.
+Two rules that carry the weight: **never write code on a `triage` issue** — the plan goes in a
+comment and stops there; and **never set `execute plan` yourself** — that label is Matthew's
+review, and setting it would be marking your own homework.
 
 Working a `triage` issue:
 
 1. Read the body properly — these are written fast, often dictated, so re-read for intent.
 2. Investigate the real code and data before planning. **Check the issue's own premises**: the
-   reporter is describing a symptom, and their guess at where it lives is often slightly off. When
+   issue describes a symptom, and its guess at where the problem lives is often slightly off. When
    the evidence disagrees with the issue, say so in the plan rather than quietly building what was
    asked for.
-3. Post the plan as a comment — what changes, in which files, what you found, and any open
-   question you need answered before it can be built.
+3. Post the plan as a comment — what changes, in which files, what you found, and any open question
+   you need answered before it can be built.
 4. Relabel `triage` → `plan`.
 
-Working an `execute plan` issue: implement, commit referencing the issue number, comment with what
-was done and the commit sha, relabel → `fixed`. Leave the issue open unless asked to close it —
-`fixed` is the state; closing is the human's call.
+Working an `execute plan` issue: implement it, commit referencing the issue number, comment with
+what was done and the commit sha, and relabel → `fixed`. If it doesn't work — the plan turns out to
+be wrong, or the fix doesn't hold — relabel → `fix failed` and comment with what went wrong rather
+than quietly leaving it in `execute plan`. Leave the issue open either way; closing is Matthew's
+call.
+
+`fix failed` can also come back the other way: an issue you marked `fixed` gets relabelled when it
+fails in real use. Treat that like a fresh `triage` — re-investigate given what the failure now
+tells you, post a revised plan, and set it back to `plan` for review.
 
 Label ids are per-repo, so **list them first, never hardcode**. On `matthew.heath/CagesWaitrose`
-they are triage=1, plan=2, fixed=3, execute plan=4.
+they are triage=1, plan=2, fixed=3, execute plan=4, fix failed=5.
 
 ## Instructions
 

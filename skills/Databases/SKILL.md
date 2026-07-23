@@ -142,6 +142,9 @@ documentation for the sql dialect is here
 
 https://www.elevatesoft.com/manual?action=topics&id=dbisam4&product=rsdelphi&version=XE&section=sql_reference
 
+**Dialect verification (Dibdog DCG)**: To confirm what the DBISAM/Exportmaster SQL dialect actually accepts, use the DCG grammar companion and labelled corpus in `~/Git/Dibdog` (the repo name is **Dibdog** — it autocorrects to "Dingo"/"Dindog"). The corpus lives at `dbisam-dcg-project/corpus/` (`dml/delete`, `power_bi_observed`, `product_log`, etc.) with real, engine-verified queries. Notably:
+- DBISAM has **no** `DELETE ... JOIN`. Scope a delete with a subquery instead: `DELETE FROM t WHERE key IN (SELECT ... )` (subqueries in `WHERE` are supported — a real `IN (select distinct ...)` appears in `power_bi_observed`).
+
 **Connection String**: `DSN=Exportmaster`
 **Parameter Style**: `?` placeholders
 **Projects**: CRMPollerFixer, JordanPrice, CS-EM2Parquet

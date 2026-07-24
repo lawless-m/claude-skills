@@ -87,6 +87,10 @@ set them with the native value setter then dispatch `input`+`change`. **Lyrics**
 rich editor: DOM edits (`execCommand`, synthetic paste) only *append* because Lexical owns its
 selection — instead grab the editor instance at `el.__lexicalEditor` and `setEditorState`.
 
+**Fill order matters:** set Lyrics and Styles *before* Title. Lexical's `setEditorState` on the
+lyrics editor triggers a re-render that clobbers the Title input if it was already set —
+filling title last (and re-verifying it after the lyrics write) avoids a silent revert to empty.
+
 ```js
 // /tmp/fill.js  — edit TITLE / STYLES / LINES to taste
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -95,8 +99,6 @@ const TITLE='My Song';
 const STYLES='dreamy synthwave, warm analog pads, 80s';
 const LINES=['[Verse]','first line','second line','','[Chorus]','hook line one','hook line two']; // '' = blank line
 const out={};
-let t=[...document.querySelectorAll('input[placeholder^="Song Title"]')].filter(e=>e.offsetParent!==null)[0]||document.querySelector('input[placeholder^="Song Title"]');
-if(t){t.focus();setNative(t,TITLE,HTMLInputElement.prototype);out.title=t.value;}
 let st=document.querySelector('textarea[maxlength="1000"]');            // Styles (Exclude-styles is an <input>, not textarea)
 if(st){st.focus();setNative(st,STYLES,HTMLTextAreaElement.prototype);out.styles=st.value;}
 let l=document.querySelector('[aria-label="Lyrics editor"]');
@@ -106,6 +108,8 @@ if(l&&l.__lexicalEditor){
   const ed=l.__lexicalEditor; ed.setEditorState(ed.parseEditorState(JSON.stringify(state)));
   await sleep(200); out.lyrics=l.innerText.slice(0,60);
 }
+let t=[...document.querySelectorAll('input[placeholder^="Song Title"]')].filter(e=>e.offsetParent!==null)[0]||document.querySelector('input[placeholder^="Song Title"]');
+if(t){t.focus();setNative(t,TITLE,HTMLInputElement.prototype);out.title=t.value;}
 return JSON.stringify(out,null,2);
 ```
 `/tmp/run_suno.sh /tmp/fill.js`
@@ -149,6 +153,9 @@ Read-only Suno data (library, billing, projects) is available the same way — c
 ## Gotchas (each cost real time to learn)
 
 - **Turnstile domain-lock (110200):** generation only works on real `suno.com`. Non-negotiable.
+- **Title reverts to empty:** filling Title before Lyrics loses the title — the Lexical
+  `setEditorState` call re-renders the form and clobbers it. Fill Styles + Lyrics first, Title
+  last, and verify all three values right before pressing Create.
 - **Copyright filter:** Suno kills generations whose lyrics match known copyrighted material —
   and it false-flags short/rhyme-y original lines. If a run dies "copyrighted", retry with
   clearly-original, quirky lyrics, or clear lyrics and go instrumental (style only).

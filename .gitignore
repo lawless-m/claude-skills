@@ -3,6 +3,7 @@
 
 # Whitelist only what we want to sync
 !.gitignore
+!CLAUDE.md
 !README.md
 !spellbook.png
 !commands/

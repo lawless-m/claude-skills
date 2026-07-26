@@ -1,6 +1,6 @@
 ---
 name: Databases
-description: Use when querying or writing to any RI database - Exportmaster (DBISAM on RIVSEM01/RIVSEM04), PostgreSQL x3rocs on rivsprod01, X3/Sage1000 SQL Server (OCS1), keycloak MySQL, or DuckDB over Parquet. Covers DSNs, hosts, the DuckDB CLI attached to live Exportmaster, DBISAM dialect quirks, and the PgQuery tool.
+description: Use when querying or writing to any RI database - Exportmaster (DBISAM on RIVSEM01/RIVSEM04), PostgreSQL x3rocs on rivsprod01, X3/Sage1000 SQL Server (OCS1), keycloak MySQL, or Parquet. DuckDB is the primary read path - plain `duckdb` on Linux auto-attaches live sem01/sem04 via the dbisam extension. Covers hosts, DSNs, DBISAM dialect quirks, and the PgQuery tool.
 ---
 
 # Databases
@@ -11,7 +11,7 @@ Environment map, dialect quirks, and tools for RI's databases. Fuller schemas, w
 
 | System | Host | Connection | Notes |
 |---|---|---|---|
-| Exportmaster (DBISAM) | RIVSEM01 (live), RIVSEM04 (alternate) | `DSN=Exportmaster` | Proprietary; ODBC for writes, DuckDB CLI for reads |
+| Exportmaster (DBISAM) | RIVSEM01 (prod), RIVSEM04 (dev) | DuckDB `sem01.<table>` (reads), `DSN=Exportmaster` ODBC (writes) | Proprietary; DuckDB is the primary read path |
 | PostgreSQL | rivsprod01 | `Host=rivsprod01;Database=x3rocs;Username=jordan` | Use Npgsql for new code |
 | X3 / Sage1000 (SQL Server) | OCS1 | `DSN=OCS1;UID=sa;PWD=1NT3rn@t10n@l;` | Same DSN for both; server to be deprecated |
 | MySQL (keycloak) | rocs-production-es.ramsden-international.com:6033 | `Server=...;Port=6033;Database=keycloak;Uid=crm;Pwd=CrmP0ller;` | Native MySql.Data |
@@ -19,21 +19,20 @@ Environment map, dialect quirks, and tools for RI's databases. Fuller schemas, w
 
 ODBC uses `?` placeholders; native MySQL uses `@param`; Npgsql uses `$1, $2` positional.
 
-## DuckDB CLI (preferred for ad-hoc Exportmaster reads)
+## DuckDB (primary read path for Exportmaster)
 
-Launcher: `Y:\Data Warehouse\duckdb\duckdb.bat` — runs `duckdb.exe -unsigned --init init.sql`, which already `LOAD dbisam` + ATTACHes the live databases read-only:
-- `sem01` → rivsem01/NISAINT_CS (live)
-- `sem04` → rivsem04/NISAINT_CS
+The custom **dbisam extension** lets DuckDB ATTACH live Exportmaster directly; both platforms come pre-wired to attach `sem01` (rivsem01/NISAINT_CS, **prod**) and `sem04` (rivsem04/NISAINT_CS, **dev**) read-only — just reference `sem01.<table>`:
 
-No DSN or connection setup needed — just reference `sem01.<table>`:
+- **Linux (this box)**: plain `duckdb` — `~/.duckdbrc` does the `LOAD dbisam` + ATTACHes (credentials live there too). Extension installed under `~/.duckdb/extensions/v{version}/linux_amd64/`; source repo `~/Git/Dbisam_fdw` (also has `sem01_views.sql`, `init.sql`). After a DuckDB version bump the extension must be rebuilt — see the DuckDB-Extensions skill.
+- **Windows**: launcher `Y:\Data Warehouse\duckdb\duckdb.bat` (`duckdb.exe -unsigned --init init.sql`).
 
 ```bash
-"Y:\Data Warehouse\duckdb\duckdb.bat" -c "SELECT * FROM sem01.profile WHERE SppCode = 'WAYPROMO'"
-"Y:\Data Warehouse\duckdb\duckdb.bat" -c "DESCRIBE sem01.profile"
-"Y:\Data Warehouse\duckdb\duckdb.bat" -f query.sql
+duckdb -c "SELECT * FROM sem01.profile WHERE SppCode = 'WAYPROMO'"
+duckdb -c "DESCRIBE sem01.profile"
+duckdb -f query.sql
 ```
 
-Read-only — for writes use the e3 application or ODBC. Full DuckDB SQL works on top (joins, aggregates, `read_parquet()` overlays).
+Read-only — for writes use the e3 application or ODBC. Full DuckDB SQL works on top (joins, aggregates, `read_parquet()` overlays). The Linux install also has `postgres_scanner`, `mysql_scanner`, and `httpfs` extensions, so DuckDB can front reads on the other databases too.
 
 ## Exportmaster / DBISAM
 

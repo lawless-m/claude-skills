@@ -13,9 +13,11 @@ Environment map, dialect quirks, and tools for RI's databases. Fuller schemas, w
 |---|---|---|---|
 | Exportmaster (DBISAM) | RIVSEM01 (prod), RIVSEM04 (dev) | DuckDB `sem01.<table>` (reads), `DSN=Exportmaster` ODBC (writes) | Proprietary; DuckDB is the primary read path |
 | PostgreSQL | rivsprod01 | `Host=rivsprod01;Database=x3rocs;Username=jordan` | Use Npgsql for new code |
-| X3 / Sage1000 (SQL Server) | OCS1 | `DSN=OCS1;UID=sa;PWD=1NT3rn@t10n@l;` | Same DSN for both; server to be deprecated |
-| MySQL (keycloak) | rocs-production-es.ramsden-international.com:6033 | `Server=...;Port=6033;Database=keycloak;Uid=crm;Pwd=CrmP0ller;` | Native MySql.Data |
+| X3 / Sage1000 (SQL Server) | OCS1 | `DSN=OCS1;UID=sa;PWD=<from vault>;` | Same DSN for both; server to be deprecated |
+| MySQL (keycloak) | rocs-production-es.ramsden-international.com:6033 | `Server=...;Port=6033;Database=keycloak;Uid=crm;Pwd=<from vault>;` | Native MySql.Data |
 | DuckDB | local | `DSN=DuckDB` (ODBC) or CLI below | Reads Parquet directly; no native C# driver |
+
+Passwords marked `<from vault>` are not recorded here: get them from the RI KeePass vault (KdbxCredentials — see the ri-service-toolkit skill) or the deployed config of a service that already uses that connection; ask Matt if neither pans out.
 
 ODBC uses `?` placeholders; native MySQL uses `@param`; Npgsql uses `$1, $2` positional.
 

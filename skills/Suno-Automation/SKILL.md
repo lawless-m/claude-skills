@@ -28,16 +28,16 @@ suno.com's CSP is permissive (`frame-ancestors 'none'; font-src 'self'` — no `
 **guarded** snippet (the guard is essential — see Gotchas):
 
 ```js
-if(!window.__bridgeLoaded){window.__bridgeLoaded=true;window.__BRIDGE_URL='wss://dw.ramsden-international.com/bridge/ws';window.__BRIDGE_TOKEN='BRIDGE';var s=document.createElement('script');s.src='https://dw.ramsden-international.com/bridge/client.js?_='+Date.now();document.head.appendChild(s);}
+if(!window.__bridgeLoaded){window.__bridgeLoaded=true;window.__BRIDGE_URL='wss://dw.ramsden-international.com/bridge/ws';window.__BRIDGE_TOKEN='<BRIDGE_TOKEN>';var s=document.createElement('script');s.src='https://dw.ramsden-international.com/bridge/client.js?_='+Date.now();document.head.appendChild(s);}
 ```
 
 Console shows `[Bridge] Connected`. As a reusable bookmarklet, prefix with `javascript:` and
 wrap in `(function(){...})()` — but create it via the Bookmarks *manager*, not the address bar
 (Chromium/Vivaldi strips the `javascript:` prefix when pasted into the address bar).
 
-Verify from the broker (token is `BRIDGE`):
+Verify from the broker (`<BRIDGE_TOKEN>` is the broker's `BRIDGE_TOKEN` env var — `systemctl show browser-bridge-broker -p Environment` on dw, or see the BrowserBridge skill):
 ```bash
-curl -s -H "Authorization: Bearer BRIDGE" http://localhost:3141/workers \
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3141/workers \
   | jq -r '.workers[]|select(.host=="suno.com")|"\(.connectionId)  \(.url)"'
 ```
 

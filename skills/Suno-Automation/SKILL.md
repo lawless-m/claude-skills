@@ -1,6 +1,6 @@
 ---
 name: Suno-Automation
-description: Drive Suno (suno.com) to generate songs by remote-controlling a logged-in browser via the Browser Bridge — connect the bridge client, fill Song Title / Styles / Lyrics on /create, press Create (Cloudflare Turnstile auto-solves on the real domain), and verify generation. Covers the Lexical lyrics editor technique, the Turnstile domain-lock, the copyright filter, and the console eager-eval connection-storm gotcha. Use when asked to make/generate a song on Suno, automate Suno, or fill the Suno create form programmatically.
+description: Use when asked to make or generate a song on Suno, automate Suno, or fill the suno.com create form programmatically — drives a logged-in browser via the Browser Bridge.
 ---
 
 # Suno Automation via the Browser Bridge

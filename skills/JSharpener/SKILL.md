@@ -1,6 +1,6 @@
 ---
 name: JSharpener
-description: Use when finding dead/unused JavaScript or TypeScript code, tracing who calls a function (call graphs, reverse call graphs), or analyzing module dependencies and circular dependencies in a JS/TS project.
+description: Use when finding dead JS/TS code, tracing callers (call graphs), or analyzing module and circular dependencies in a JS/TS project.
 ---
 
 # JSharpener — JS/TS static analysis

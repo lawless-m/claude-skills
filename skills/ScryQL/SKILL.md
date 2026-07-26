@@ -1,6 +1,6 @@
 ---
 name: ScryQL
-description: Generate ScryQL `rules.pl` + `queries.sql` from existing project SQL so the user can diagnose why a specific record does or doesn't pass through their query. Trigger when the user asks "why isn't <record> in this query result", "trace this row through the joins", "make a diagnostic for this report", or wants to decompose a WHERE/JOIN-heavy SQL into per-step pass/fail attribution against a single subject. Output: a matched pair of files plus a sample CLI invocation; the engine itself lives at /nonreplicated/Git/ScryQL and does not need editing.
+description: Use when asked "why isn't <record> in this query result", to trace a row through joins, or to decompose WHERE/JOIN-heavy SQL into per-step pass/fail attribution — generates ScryQL rules.pl + queries.sql.
 ---
 
 # ScryQL: generate diagnostics from existing SQL

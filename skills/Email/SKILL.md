@@ -1,6 +1,6 @@
 ---
 name: Email
-description: Use when sending email from RI C# services - notifications, daily reports, or log files as attachments. Covers the internal SMTP host, reading log files that are still locked by the logging process, zip-then-attach with cleanup, and the MailMessage disposal gotcha.
+description: Use when sending email from RI C# services — notifications, daily reports, or log files as attachments.
 ---
 
 # Email — SMTP with log attachments

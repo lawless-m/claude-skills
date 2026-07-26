@@ -1,6 +1,6 @@
 ---
 name: boofuzz
-description: Use when writing or contributing a boofuzz network-protocol fuzzer in this repo — where runnable fuzzers vs reusable protocol definitions live, the Black/tox formatting rules, and how to read the SQLite results. Assumes you already know the boofuzz API.
+description: Use when writing or contributing a boofuzz network-protocol fuzzer in this repo — layout, formatting rules, and reading results.
 ---
 
 # boofuzz fuzzers

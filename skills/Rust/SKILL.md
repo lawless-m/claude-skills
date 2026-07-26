@@ -1,6 +1,6 @@
 ---
 name: Rust
-description: Use when starting or writing Rust projects - CLI/TUI apps, error handling, project setup - and especially for this environment's Linux v4l2 video device I/O, RGB-to-YUYV color conversion, and real-time frame timing patterns
+description: Use when starting or writing Rust projects — and especially this environment's v4l2 video I/O, RGB-to-YUYV conversion, and frame-timing patterns.
 ---
 
 # Rust Development

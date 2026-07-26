@@ -1,6 +1,6 @@
 ---
 name: task-loop
-description: Invoke once per timer tick under /loop dynamic (self-paced) mode — picks the next unblocked pending task, works it to completion, and schedules the next wake-up if work remains. Not for cron-style /loop 60s.
+description: Invoke once per timer tick under /loop dynamic mode — picks the next unblocked task, works it, schedules the next wake-up. Not for cron-style /loop 60s.
 ---
 
 # task-loop

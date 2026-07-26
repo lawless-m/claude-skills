@@ -1,6 +1,6 @@
 ---
 name: Dotnet 8 to 9
-description: Use when migrating a project from .NET 8 to .NET 9, or when preparing .NET 8 code for that migration in an environment that only has the .NET 8 SDK (e.g. Claude for Web). Covers the backtick-in-verbatim-string breakage, minimum package versions, and TestData compilation exclusions.
+description: Use when migrating a project from .NET 8 to .NET 9, or preparing .NET 8 code for that migration with only the .NET 8 SDK available (e.g. Claude for Web).
 ---
 
 # .NET 8 → 9 Migration

@@ -1,6 +1,6 @@
 ---
 name: Flowstone Docs
-description: Writing Flowstone-compatible project notes and hub notes in a dedicated docs directory. Each project in a multi-repo corpus gets its own small Markdown note with [[wiki-links]] to sibling projects and shared themes, so Flowstone's knowledge graph stays connected. Existing repo READMEs are NOT touched.
+description: Use when writing Flowstone-compatible project or hub notes — small Markdown notes with [[wiki-links]] so the knowledge graph stays connected; never touches repo READMEs.
 ---
 
 # Flowstone Docs

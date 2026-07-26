@@ -1,6 +1,6 @@
 ---
 name: Character LoRA on RunPod
-description: End-to-end pipeline to train a character LoRA (Chroma/Flux, or Pony/SDXL) on a rented RunPod GPU and wire it into the ComfyUI + pony_web render stack — caption, deploy pod, train with ai-toolkit, render with face-fix, add a web-UI model entry, and run an infinite variety loop. Includes the RunPod SSH/volume gotchas.
+description: Use when training a character LoRA (Chroma/Flux or Pony/SDXL) on a RunPod GPU and wiring it into the ComfyUI + pony_web render stack.
 tags: [lora, training, runpod, comfyui, chroma, flux, ai-toolkit, joycaption]
 version: 1.0
 ---

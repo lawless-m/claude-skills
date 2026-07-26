@@ -1,6 +1,6 @@
 ---
 name: DuckDB-Extensions
-description: Use when building, debugging, or deploying a DuckDB loadable extension (.duckdb_extension) — version-matching the DuckDB build, "not a DuckDB extension" metadata errors, const bind_data problems, install paths, or .duckdbrc auto-loading.
+description: Use when building, debugging, or deploying a DuckDB loadable extension — version matching, "not a DuckDB extension" errors, install paths, auto-loading.
 ---
 
 # DuckDB Extensions

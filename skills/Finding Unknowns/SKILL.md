@@ -1,6 +1,6 @@
 ---
 name: Finding Unknowns
-description: Use when starting ambiguous, unfamiliar, or high-stakes work — or when the user says "blind spot pass", "interview me", "what am I missing", "give me N directions", or asks for an implementation plan. Techniques for surfacing gaps before, during, and after implementation, from Anthropic's Fable field guide.
+description: Use when starting ambiguous or high-stakes work, or when the user says "blind spot pass", "interview me", "what am I missing", or asks for an implementation plan.
 ---
 
 # Finding Unknowns

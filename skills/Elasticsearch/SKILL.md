@@ -1,6 +1,6 @@
 ---
 name: Elasticsearch
-description: Use when searching, indexing, bulk-loading, or rebuilding indices on RI's Elasticsearch cluster - which is locked at version 5.2 - via the ServiceLib.Elasticsearch HttpClient wrapper. Covers the timestamped-index/alias rebuild pattern, scroll cleanup, and the de-aliasing quirk for document operations.
+description: Use when searching, indexing, bulk-loading, or rebuilding indices on RI's Elasticsearch cluster (locked at 5.2) via ServiceLib.Elasticsearch.
 ---
 
 # Elasticsearch (5.2, fixed)

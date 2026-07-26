@@ -1,6 +1,6 @@
 ---
 name: Databases
-description: Use when querying or writing to any RI database - Exportmaster (DBISAM on RIVSEM01/RIVSEM04), PostgreSQL x3rocs on rivsprod01, X3/Sage1000 SQL Server (OCS1), keycloak MySQL, or Parquet. DuckDB is the primary read path - plain `duckdb` on Linux auto-attaches live sem01/sem04 via the dbisam extension. Covers hosts, DSNs, DBISAM dialect quirks, and the PgQuery tool.
+description: Use when querying or writing any RI database — Exportmaster (DBISAM sem01/sem04), PostgreSQL x3rocs, X3/Sage1000 SQL Server, keycloak MySQL, or Parquet. DuckDB is the primary read path.
 ---
 
 # Databases

@@ -1,6 +1,6 @@
 ---
 name: Blog Management
-description: Use when creating, editing, publishing, unpublishing, or deleting posts on Cyril's Workshop blog or the devblog at steponnopets.net — e.g. "fix a typo in the latest devblog post", "add a tag to the admin panel post", "publish that draft", "update the repo link".
+description: Use when creating, editing, publishing, or deleting posts on Cyril's Workshop blog or the steponnopets.net devblog.
 ---
 
 # Blog Management

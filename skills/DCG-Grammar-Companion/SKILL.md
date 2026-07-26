@@ -1,6 +1,6 @@
 ---
 name: DCG-Grammar-Companion
-description: Pattern for building parsers with provable correctness via a Prolog DCG companion. Write the language grammar as a Definite Clause Grammar in Prolog alongside the production parser, then use the DCG as both an executable second reading of the spec and a fuzz-input generator for differential testing. Trigger when planning a new parser or lexer for a published language spec, deciding how to validate parser correctness, discussing fuzz-testing parsers, or evaluating whether to build a grammar companion alongside a hand-written parser.
+description: Use when planning a new parser or lexer for a published language spec, validating parser correctness, or fuzz-testing a parser — build a Prolog DCG grammar companion alongside the hand-written parser.
 ---
 
 # DCG Grammar Companion

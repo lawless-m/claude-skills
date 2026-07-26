@@ -1,6 +1,6 @@
 ---
 name: Vram-GPU-OOM
-description: Use when GPU services (Ollama, Whisper, ComfyUI/Flux, Invoice OCR) contend for VRAM on the RTX 3090 and hit CUDA OOM — covers the retry-and-wait convention, quick-unload config, and the request-unload signaling protocol.
+description: Use when GPU services (Ollama, Whisper, ComfyUI/Flux, OCR) contend for VRAM on the RTX 3090 and hit CUDA OOM.
 ---
 
 # GPU OOM / VRAM sharing

@@ -1,6 +1,6 @@
 ---
 name: Whisper-Transcription
-description: Use when transcribing audio to text via the local whisper.cpp server (large-v3, CUDA) on this machine — POST an audio file and get JSON back. Covers the server binary/model paths, port, systemd unit, and VRAM footprint.
+description: Use when transcribing audio to text via the local whisper.cpp server (large-v3, CUDA) — POST an audio file, get JSON back.
 ---
 
 # Whisper Transcription Server

@@ -1,6 +1,6 @@
 ---
 name: Nawin
-description: Use when working on the Nawin .NET 9 codebase or connecting to 9front/Plan 9 over 9P2000 — serving a directory, CPU remote shell, mounting via FUSE/ProjFS, or running the auth server. Covers this repo's project layout, ports, auth protocols, and 9front test VM.
+description: Use when working on the Nawin .NET 9 codebase or connecting to 9front/Plan 9 over 9P2000 — file serving, CPU shell, FUSE/ProjFS mounts, auth.
 ---
 
 # Nawin

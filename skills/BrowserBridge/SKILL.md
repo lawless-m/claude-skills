@@ -1,6 +1,6 @@
 ---
 name: BrowserBridge
-description: Real-time browser interaction via the Browser Bridge Broker — submit JS jobs over HTTP that connected browsers eval and return. Token-authed; broker on localhost:3141, fronted by Apache at https://dw.ramsden-international.com/bridge/
+description: Use when a task needs real-time control of a connected browser via the Browser Bridge Broker — submit JS jobs over HTTP that browsers eval and return.
 ---
 
 # BrowserBridge — Browser Bridge Broker

@@ -1,6 +1,6 @@
 ---
 name: SharePoint
-description: Use when uploading/downloading files to RI's SharePoint Online sites (RIHub, TradingDepartment), updating Excel tracker cells, or normalizing pasted SharePoint share links. Covers the CSOM-vs-Graph split, chunked upload size rules, and share-link URL de-angling.
+description: Use when uploading/downloading files to RI's SharePoint Online sites, updating Excel tracker cells, or normalizing pasted share links.
 ---
 
 # SharePoint Online (RI)

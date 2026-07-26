@@ -1,6 +1,6 @@
 ---
 name: auto-testing
-description: Use when building an automated test → issue → fix loop with Claude Code and GitHub issues — overnight auto-fixing, regression loops, self-healing CI. Key insight is shell-gated lifecycle - shell exit codes, not Claude, decide when issues close.
+description: Use when building an automated test → issue → fix loop with Claude Code and GitHub issues — overnight auto-fixing, regression loops, self-healing CI.
 ---
 
 # Automated Test-Fix Loop

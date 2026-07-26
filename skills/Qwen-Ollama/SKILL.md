@@ -1,6 +1,6 @@
 ---
 name: Qwen-Ollama
-description: Use when a task needs local LLM inference via the on-box Ollama server — text analysis, summarization, or automation with Qwen 2.5 — instead of a cloud API (offline, private data, or zero-cost batch work).
+description: Use when a task needs local LLM inference via the on-box Ollama server (Qwen 2.5) instead of a cloud API.
 ---
 
 # Qwen via Ollama

@@ -1,6 +1,6 @@
 ---
 name: Creating Skills
-description: Use when writing a new skill or revising an existing one. Covers the SKILL.md format, how to write a description that triggers discovery, what content belongs in a skill vs what Claude already knows, and when to split into reference files.
+description: Use when writing a new skill or revising an existing one — format, trigger descriptions, and what content belongs in a skill.
 ---
 
 # Creating Skills

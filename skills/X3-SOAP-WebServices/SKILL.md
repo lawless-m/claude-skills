@@ -1,6 +1,6 @@
 ---
 name: X3 SOAP Web Services
-description: Building, deploying, and calling Classic SOAP sub-program web services on Sage X3 — covers 4GL signature, publication setup, SOAP envelope format (including TAB/LIN arrays), pool quirks, and Ramsden-specific install notes
+description: Use when building, deploying, or calling Classic SOAP sub-program web services on Sage X3.
 ---
 
 # X3 SOAP Web Services

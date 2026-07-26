@@ -1,6 +1,6 @@
 ---
 name: web-frontend
-description: Use when building an elaborate multi-component claude.ai HTML artifact that needs state, routing, or shadcn/ui components — this repo's init/bundle scripts scaffold a React+TS+Vite+Tailwind+shadcn project and inline it to a single bundle.html. Not for simple single-file HTML/JSX artifacts.
+description: Use when building an elaborate multi-component claude.ai HTML artifact needing state, routing, or shadcn/ui — not for simple single-file artifacts.
 license: Complete terms in LICENSE.txt
 ---
 

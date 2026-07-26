@@ -1,6 +1,6 @@
 ---
 name: ri-service-toolkit
-description: Build a .NET 9 service from RI's shared components — ExportKing (DBISAM/Exportmaster), KdbxCredentials (KeePass), OhSheet (S3 product images), and Anthea (customer pricing) — deployed as a TinyWeb CGI running as LocalSystem. Also covers registering any human-facing URL (service, liveboard, app) on the dw.ramsden-international.com portal page, which is the last step of every deployment.
+description: Use when building a .NET 9 service from RI's shared components (ExportKing, KdbxCredentials, OhSheet, Anthea) deployed as a TinyWeb CGI, or registering a URL on the dw portal page.
 ---
 
 # RI Service Toolkit

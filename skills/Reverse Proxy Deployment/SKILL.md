@@ -1,6 +1,6 @@
 ---
 name: Reverse Proxy Deployment
-description: Use when deploying a web app or API behind the Apache reverse proxy on rivsprod01 (dw.ramsden-international.com), writing or debugging a ProxyPass config in /etc/apache2/proxy-conf.d/, or fixing 404s / connection refused for a service under a path prefix.
+description: Use when deploying behind the Apache reverse proxy on rivsprod01, writing a ProxyPass config in /etc/apache2/proxy-conf.d/, or fixing 404s under a path prefix.
 ---
 
 # Reverse Proxy Deployment

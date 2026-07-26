@@ -51,13 +51,14 @@ The worker `connectionId` changes on **every navigation/reload**, and jobs fail 
 cat > /tmp/run_suno.sh <<'SH'
 #!/bin/bash
 # run_suno.sh <script-file> [timeout-ms]  — evals JS on the current suno.com tab, retries
+# Requires TOKEN env var = the broker's BRIDGE_TOKEN (see BrowserBridge skill)
 SCRIPT="$1"; TMO="${2:-15000}"
 for i in $(seq 1 6); do
-  W=$(curl -s -H "Authorization: Bearer BRIDGE" http://localhost:3141/workers \
+  W=$(curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3141/workers \
       | jq -r '.workers[]|select(.host=="suno.com")|.connectionId' | head -1)
   [ -z "$W" ] && { sleep 2; continue; }
   jq -Rs --arg t "$W" --argjson to "$TMO" '{target:$t,timeout:$to,script:.}' "$SCRIPT" > /tmp/_sj.json
-  R=$(curl -s -XPOST http://localhost:3141/jobs/sync -H "Authorization: Bearer BRIDGE" \
+  R=$(curl -s -XPOST http://localhost:3141/jobs/sync -H "Authorization: Bearer $TOKEN" \
       -H 'Content-Type: application/json' --max-time $((TMO/1000+8)) -d @/tmp/_sj.json)
   echo "$R" | grep -q 'no browser connected' && { sleep 2; continue; }
   echo "$R" | jq -r '.result, (.error//empty)'; exit 0

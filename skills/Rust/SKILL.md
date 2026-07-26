@@ -1,6 +1,6 @@
 ---
 name: Rust
-description: Rust development patterns, project setup, CLI/TUI applications, error handling, and system integration
+description: Use when starting or writing Rust projects - CLI/TUI apps, error handling, project setup - and especially for this environment's Linux v4l2 video device I/O, RGB-to-YUYV color conversion, and real-time frame timing patterns
 ---
 
 # Rust Development

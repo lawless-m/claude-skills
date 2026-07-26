@@ -164,7 +164,7 @@ In the response's `traceRequest` CDATA, look for:
 
 | Error message | Meaning | Fix |
 |---|---|---|
-| `Illegal character` (`val_anagram`) | 4GL syntax error — usually trailing `_` line continuation or wrong operator | Use `&` for line continuation; check operators |
+| `Illegal character` (`val_anagram`) | Adonix 4GL line continuation is `&` — a trailing `_` is a syntax error | Replace trailing `_` with `&` |
 | `Class nonexistent [F:BPC]` | File abbreviation not declared | Add `Local File BPCUSTOMER [BPC]` before any `[F:BPC]` reference |
 | `File nonexistent ... BPC.fde` (compile / runtime open) | Used the abbreviation as the table code in `Local File` | Use the actual table code (`BPCUSTOMER`, not `BPC`) |
 | `Cannot add field [FLD] under root node. Field [X] not found into X3 description.` | Field needs to be inside a GRP/TAB | Wrap in the right GRP/TAB based on the Mapping tab |

@@ -92,6 +92,12 @@ Our dev hosts have modern CLI tools installed — prefer them in shell commands.
 - `yq` — jq for YAML (mikefarah v4 syntax)
 - `jq`, `parallel`, `tokei`, `gh`, `sqlite3` — also available
 
+**Windows hosts**
+
+Everything above is installed except `parallel` — GNU parallel is a Perl tool with no sane native Windows install; use PowerShell's `ForEach-Object -Parallel` instead.
+
+Installed via winget (search/files, uv, hyperfine, yq, sqlite3, shellcheck), `cargo binstall` (the cargo subcommands, watchexec), and `dotnet tool install -g` (csharpier, dotnet-outdated). C# tools live in `~/.dotnet/tools`, not the Linux path. After a fresh install the new PATH entries only reach *new* shells — a long-running session keeps the stale PATH, so invoke by full path or re-read `[Environment]::GetEnvironmentVariable('PATH','User')` rather than concluding the tool is missing.
+
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.

@@ -35,27 +35,41 @@ exchange rather than a whole loop.
 
 4. **Spawn the planner**: `Agent` with `subagent_type: "general-purpose"`,
    `model: "fable"`, prompt = the brief plus the planning rules below, verbatim.
-   The task list is session-shared, so tasks it creates are the same list
-   `/task-loop` will drain.
 
-5. **Relay the result**: id, subject, one-line verification for each task, then:
+   The planner does NOT have the task tools — the task list is main-session scoped.
+   So it returns task *specs* and you create them. That's the one unavoidable cost:
+   the descriptions pass through your output. Keep your part mechanical.
+
+5. **Create the tasks verbatim** from the returned JSON, in array order, one
+   `TaskCreate` each, then wire any `blockedBy`. Copy `description` exactly as
+   written — do not re-word, expand, or improve it. The planner read the code; you
+   did not. If a verification command it cites is cheap to confirm and load-bearing,
+   spot-check it first — but check, don't rewrite.
+
+6. **Hand off**: id, subject, one-line verification for each, then
    `build-loop: <n> tasks. Gate: #<last> — <check>. Run: /loop /task-loop`
-   If the planner came back with a question instead of tasks, put that question to
-   the user and stop.
+   If the planner returned a question instead of tasks, put it to the user and stop.
 
 ## Planning rules (include verbatim in the agent prompt)
 
-- First load the task tools: `ToolSearch("select:TaskCreate,TaskList,TaskUpdate")`.
-- Create tasks in execution order — `/task-loop` picks the lowest-ID unblocked
-  pending task, so ID order is execution order. Add `addBlockedBy` only for real
-  dependencies.
-- Each task is one slice of work, completable in a single turn, with a description
-  that stands alone: what to do, the exact verification command (only commands the
-  brief confirms exist), an observable done-when, and what must NOT be touched
-  where scope creep is a risk.
+You have no task-list tools. Your final output IS the task list, as JSON and nothing
+else — no preamble, no commentary:
+
+```json
+[{"subject": "...", "activeForm": "...", "description": "...", "blockedBy": []}]
+```
+
+- Array order is execution order — `/task-loop` takes the lowest-ID unblocked pending
+  task. Use `blockedBy` (0-based indices into this array) only for real dependencies;
+  plain ordering is already implied.
+- Each task is one slice of work, completable in a single turn. The `description`
+  must stand alone — the executing model may have lost all conversational context by
+  then. It states: what to do, the exact verification command (only commands the
+  brief confirms exist — never invent one), an observable done-when, and what must
+  NOT be touched where scope creep is a risk.
+- Write descriptions in full. They are the deliverable; whoever relays them will copy
+  them verbatim, so anything you leave implicit is lost.
 - The last task is an end-to-end gate — the check you'd use to call the whole goal
-  done (full suite, smoke test). A finite list with a real final check is what makes
-  the loop provably terminate.
-- Nothing speculative. If the brief is ambiguous, create no tasks — return the
-  question as your final output instead.
-- Final output: a numbered summary — id, subject, one-line verification per task.
+  done. A finite list with a real final check is what makes the loop provably end.
+- Nothing speculative. If the brief is ambiguous, return no tasks — return
+  `{"question": "..."}` instead.

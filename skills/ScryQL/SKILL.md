@@ -147,7 +147,7 @@ For each `WHERE` clause or `JOIN`, ask: *what's the smallest fact set that lets 
 - **Subjects must be alphanumeric in practice.** Embedded single quotes break the format-string injection (this is a known limitation, not yet fixed).
 - **Every dynamic fact predicate needs `:- dynamic(name/arity).`** in rules.pl. Forgetting this is the most common error.
 - **Setup runs once, against a fresh in-memory DuckDB.** Don't put per-row work in `-- @setup`.
-- **The user's data is at:** `/mnt/prod02_ri_services/Outputs/Parquets/em/` for Exportmaster, Postgres `x3rocs` (read-only as `user=jordan`) for Sage X3, custom `odbcbridge` extension for live Exportmaster. See `reference_cross_db_layout.md` and `reference_odbcbridge.md` in user memory.
+- **The user's data is at:** `/mnt/prod02_ri_services/Outputs/Parquets/em/` for Exportmaster, Postgres `x3rocs` (read-only; credentials via kdbx entry `Postgres/x3rocs`) for Sage X3, custom `odbcbridge` extension for live Exportmaster. See `reference_cross_db_layout.md` and `reference_odbcbridge.md` in user memory.
 
 ## Quick recipe
 

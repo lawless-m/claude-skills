@@ -12,7 +12,7 @@ Environment map, dialect quirks, and tools for RI's databases. Fuller schemas, w
 | System | Host | Connection | Notes |
 |---|---|---|---|
 | Exportmaster (DBISAM) | RIVSEM01 (prod), RIVSEM04 (dev) | DuckDB `sem01.<table>` (reads), `DSN=Exportmaster` ODBC (writes) | Proprietary; DuckDB is the primary read path |
-| PostgreSQL | rivsprod01 | `Host=rivsprod01;Database=x3rocs;Username=jordan` | Use Npgsql for new code |
+| PostgreSQL | rivsprod01 | `Host=rivsprod01;Database=x3rocs;Username=<from vault>` | Use Npgsql for new code; kdbx entry `Postgres/x3rocs` |
 | X3 / Sage1000 (SQL Server) | OCS1 | `DSN=OCS1;UID=sa;PWD=<from vault>;` | Same DSN for both; server to be deprecated |
 | MySQL (keycloak) | rocs-production-es.ramsden-international.com:6033 | `Server=...;Port=6033;Database=keycloak;Uid=crm;Pwd=<from vault>;` | Native MySql.Data |
 | DuckDB | local | `DSN=DuckDB` (ODBC) or CLI below | Reads Parquet directly; no native C# driver |
@@ -56,7 +56,7 @@ Calling a PostgreSQL function whose signature has `VARCHAR(n)` parameters fails 
 
 - Production: `Y:\CSharpDLLs\PgQuery\PgQuery.exe`; source: `C:\Users\matthew.heath\Git\PgQuery` (repo `gogs@dw.ramsden-international.com:matthew.heath/PgQuery.git`)
 - `PgQuery --config <config.json> --sql "..."` or `--file script.sql`, optional `--output results.txt`
-- Config JSON: `{"host": "rivsprod01", "database": "x3rocs", "username": "jordan", "password": null, "port": 5432}` — examples live in `R:\JsonParams\` (e.g. `CRMPollerFixer.config.json`)
+- Config JSON: `{"host": "rivsprod01", "database": "x3rocs", "username": "<from vault: Postgres/x3rocs>", "password": null, "port": 5432}` — examples live in `R:\JsonParams\` (e.g. `CRMPollerFixer.config.json`)
 
 ## X3 / Sage1000
 

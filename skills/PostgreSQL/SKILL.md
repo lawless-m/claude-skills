@@ -117,7 +117,7 @@ Y:/CSharpDLLs/PgQuery/PgQuery.exe --config "<config-file>" --sql "<sql-statement
   "host": "rivsprod01",
   "port": "5432",
   "database": "x3rocs",
-  "username": "jordan",
+  "username": "<from vault: Postgres/x3rocs>",
   "password": "your-password"
 }
 ```

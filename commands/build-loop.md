@@ -1,6 +1,6 @@
 ---
 description: Plan the current goal into a finite, verifiable task list that /task-loop can drain
-model: fable
+model: sonnet
 argument-hint: [goal — omit to use what we've been working on]
 ---
 

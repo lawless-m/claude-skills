@@ -37,7 +37,7 @@ wrap in `(function(){...})()` — but create it via the Bookmarks *manager*, not
 
 Verify from the broker (`<BRIDGE_TOKEN>` is the broker's `BRIDGE_TOKEN` env var — `systemctl show browser-bridge-broker -p Environment` on dw, or see the BrowserBridge skill):
 ```bash
-curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3141/workers \
+curl -s -H "Authorization: Bearer $TOKEN" https://dw.ramsden-international.com/bridge/workers \
   | jq -r '.workers[]|select(.host=="suno.com")|"\(.connectionId)  \(.url)"'
 ```
 
@@ -52,13 +52,15 @@ cat > /tmp/run_suno.sh <<'SH'
 #!/bin/bash
 # run_suno.sh <script-file> [timeout-ms]  — evals JS on the current suno.com tab, retries
 # Requires TOKEN env var = the broker's BRIDGE_TOKEN (see BrowserBridge skill)
+# BASE defaults to the public URL; override with http://localhost:3141 on the broker host
 SCRIPT="$1"; TMO="${2:-15000}"
+BASE="${BASE:-https://dw.ramsden-international.com/bridge}"
 for i in $(seq 1 6); do
-  W=$(curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3141/workers \
+  W=$(curl -s -H "Authorization: Bearer $TOKEN" $BASE/workers \
       | jq -r '.workers[]|select(.host=="suno.com")|.connectionId' | head -1)
   [ -z "$W" ] && { sleep 2; continue; }
   jq -Rs --arg t "$W" --argjson to "$TMO" '{target:$t,timeout:$to,script:.}' "$SCRIPT" > /tmp/_sj.json
-  R=$(curl -s -XPOST http://localhost:3141/jobs/sync -H "Authorization: Bearer $TOKEN" \
+  R=$(curl -s -XPOST $BASE/jobs/sync -H "Authorization: Bearer $TOKEN" \
       -H 'Content-Type: application/json' --max-time $((TMO/1000+8)) -d @/tmp/_sj.json)
   echo "$R" | grep -q 'no browser connected' && { sleep 2; continue; }
   echo "$R" | jq -r '.result, (.error//empty)'; exit 0

@@ -19,8 +19,8 @@ The broker is a zero-dependency Node server (`server.js`). Full docs live at
 ## Endpoints & auth
 
 Two base URLs point at the same broker:
-- **Local:** `http://localhost:3141` (loopback, Apache fronts it)
-- **Public:** `https://dw.ramsden-international.com/bridge` (through Apache, incl. the `/ws` WebSocket upgrade)
+- **Public:** `https://dw.ramsden-international.com/bridge` — use this. Through Apache, incl. the `/ws` WebSocket upgrade.
+- **Local:** `http://localhost:3141` — only from the broker host itself (`rivsprod01`). The broker binds loopback, so this fails from any other machine, workstations included.
 
 Auth: send `Authorization: Bearer <BRIDGE_TOKEN>` on **every** call except the
 unauthenticated ones: `/`, `/readme`, `/health`, `/client.js`, `/status`.
@@ -45,25 +45,26 @@ user, or read it from the running unit (`systemctl show browser-bridge-broker -p
 
 ```bash
 TOKEN=<BRIDGE_TOKEN>
+BASE=https://dw.ramsden-international.com/bridge
 
 # 1. Is the broker up and are any browsers connected?
-curl -s http://localhost:3141/health          # {"status":"ok","workers":N,"jobs":M}
+curl -s $BASE/health          # {"status":"ok","workers":N,"jobs":M}
 
 # 2. Which browsers / pages are connected (need the right one before targeting)?
-curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3141/workers
+curl -s -H "Authorization: Bearer $TOKEN" $BASE/workers
 
 # 3. Run JS on any connected browser (blocks until result):
-curl -s -XPOST http://localhost:3141/jobs/sync \
+curl -s -XPOST $BASE/jobs/sync \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"script":"document.title"}'
 
 # 4. Target a specific tab by connectionId:
-curl -s -XPOST http://localhost:3141/jobs/sync \
+curl -s -XPOST $BASE/jobs/sync \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"script":"document.title","target":"proxy_1783..._abc"}'
 ```
 
-The public URL works identically — swap the base for `https://dw.ramsden-international.com/bridge`.
+On the broker host itself, `BASE=http://localhost:3141` works identically.
 
 ## Structured result
 

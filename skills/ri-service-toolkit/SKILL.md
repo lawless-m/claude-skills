@@ -358,6 +358,33 @@ Invoke-WebRequest -Uri "https://dw.ramsden-international.com/tiny02/cgi-bin/Supe
   -Method Post -InFile example.txt -ContentType "text/plain" -OutFile out.xlsx
 ```
 
+## No-cache on anything served from TinyWeb
+
+Every page under `R:\TinyWeb\www\pibs\` must carry the no-cache meta block, or people
+keep seeing yesterday's board after you deploy and conclude the change didn't work:
+
+```html
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+```
+
+TinyWeb already sends `Cache-Control: no-cache` with a `Last-Modified` on these paths, and
+conditional requests do work (an `If-Modified-Since` matching the file returns 304, an older
+one returns 200). But **`no-cache` means "revalidate before reusing", not "do not store"** —
+a browser holding an open tab, or a back/forward navigation, can still paint a stale copy.
+So after redeploying a page, verify with a hard refresh rather than a normal one, and check
+the served bytes rather than what your tab shows:
+
+```bash
+curl -sI  "https://dw.ramsden-international.com/tiny02/pibs/<name>.html" | grep -i -E "cache|last-modified"
+curl -s   "https://dw.ramsden-international.com/tiny02/pibs/<name>.html" | grep -c "<some string only the new version has>"
+```
+
+Data fetches are separate from the document and need their own opt-out — the MrsFlow boards
+pass `{ cache: 'no-store' }` on every `fetch()` to `mrsflow-cgi.exe`, which is what stops a
+board showing a fresh page built from a cached parquet.
+
 ## The portal page
 
 Everything human-facing at RI is indexed from one page: **https://dw.ramsden-international.com/**

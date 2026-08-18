@@ -77,11 +77,17 @@ task list, as JSON and nothing else — no preamble, no commentary:
 
 - Array order is execution order — a slice takes the lowest-id unblocked task. Use `blockedBy` (0-based indices into this array) only for real dependencies;
   plain ordering is already implied.
-- Each task is one slice of work, completable in a single turn. The `description`
-  must stand alone — the executing model may have lost all conversational context by
-  then. It states: what to do, the exact verification command (only commands the
-  brief confirms exist — never invent one), an observable done-when, and what must
-  NOT be touched where scope creep is a risk.
+- **Make tasks small.** One coherent change with one verification, not a work
+  package. If the description needs "and then", or lists numbered sub-parts, or names
+  more than a couple of files to change, it is at least two tasks — split it. Err
+  small: ten tasks that each land in minutes are far better than three that each take
+  an hour, because every completed task is a checkpoint on disk, a visible
+  announcement, and a place a failure can stop cleanly. A task too large to finish is
+  the one failure mode that leaves no useful trace.
+- Each task's `description` must stand alone — the executing model may have lost all
+  conversational context by then. It states: what to do, the exact verification
+  command (only commands the brief confirms exist — never invent one), an observable
+  done-when, and what must NOT be touched where scope creep is a risk.
 - Write descriptions in full. They are the deliverable; whoever relays them will copy
   them verbatim, so anything you leave implicit is lost.
 - The last task is an end-to-end gate — the check you'd use to call the whole goal

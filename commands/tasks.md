@@ -6,7 +6,8 @@ argument-hint: [max slices — omit to drain the whole queue]
 # tasks
 
 Work the queue in `tasks/` until it is empty or something stops you. `$ARGUMENTS`, if a
-number, caps how many slices to run; otherwise drain the lot.
+number, caps how many slices to run — an override for when the user wants one, never a
+default and never something to ask them for. Otherwise drain the lot.
 
 Finish a slice, pick the next, carry on in the same turn.
 
@@ -36,9 +37,22 @@ let the user decide.
 Announce each slice as it starts so a long drain is followable rather than a wall of
 output arriving at the end.
 
-## Be honest about how far this gets
+## Keep going until something objective stops you
 
-Long descriptions plus real work plus verification output accumulate, so a queue of
-large tasks will exhaust context before it drains. That is fine — say how many slices
-ran and what is next; resuming is `/tasks` again. Do not pretend a partial drain was a
-full one, and never mark a task done to keep the run going.
+The stop conditions are exactly the four above, plus one: fewer than ~15% of the
+context window left, which is measurable. Nothing else. In particular, do **not** stop
+because the run feels long, because a lot has been done, because the next task looks
+big, or because it seems a good moment to report. Those are judgements the user cannot
+make in advance and cannot see you making — from their side an unexplained stop is
+indistinguishable from a fault.
+
+If you think a run should end for a reason not on that list, say so and ask. Do not
+decide it silently and describe it afterwards as though it were a rule.
+
+Announce each slice as it starts, so a long run is followable as it happens rather than
+arriving as a wall of output at the end. That, not stopping early, is what keeps a drain
+supervisable.
+
+When the context stop does apply, say how many slices ran and what is next; resuming is
+`/tasks` again. Do not pretend a partial drain was a full one, and never mark a task done
+to keep the run going.

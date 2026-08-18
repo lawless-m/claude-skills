@@ -23,19 +23,29 @@ is summarised mid-drain, re-read `ls tasks/` and continue with nothing lost.
 3. **Then decide**:
    - Slice completed and unblocked work remains, and the cap is not reached → go to 2.
    - `tasks/` now empty → print `tasks: queue drained — <n> completed` and stop.
-   - Slice halted → print `tasks: stopped at #<id> — <reason>` and stop. Do **not**
-     move on to another task; a halt means something needs a human.
-   - Everything left is blocked → `tasks: stalled — #<id> blocked by #<ids>` and stop.
+   - Slice halted → print `tasks: halted #<id> — <reason>`, leave the `halted:` line in
+     its file, and go to 2 for the next *unblocked* task. Do not retry the halted one.
+   - Nothing runnable remains → `tasks: <n> completed, <m> halted, <k> blocked` and stop.
    - Cap reached → print `tasks: <n> slices done, <m> remaining` and stop.
 
-## Stop, don't push through
+## A halt skips, it does not stop the run
 
-A halt is not a task to skip. The queue is ordered and often dependent, and a failure
-usually means the plan met reality — that is information, not an obstacle. Report it and
-let the user decide.
+A halt is not a failure of the run, and it is not a task to retry. Record why in the
+task's `halted:` line, leave the file in `tasks/`, and move to the next unblocked task.
 
-Announce each slice as it starts so a long drain is followable rather than a wall of
-output arriving at the end.
+Skipping is safe because the queue already says what a failure invalidates: anything
+genuinely downstream of a halted task has it in `blocked-by` and becomes unrunnable by
+itself. Anything else is independent, and there is no reason a stumble on one should
+cost the rest. Stopping the whole queue on the first halt is only ever right when
+someone is watching — and the person who prepared a queue and left is precisely the
+person it fails.
+
+Do not attempt to unblock a halted task by editing its description, relaxing its
+verification, or inventing a workaround its author did not sanction. Halt, record,
+carry on.
+
+At the end, list every halted task with its reason together, so the first thing read on
+return is what needs a decision.
 
 ## Keep going until something objective stops you
 

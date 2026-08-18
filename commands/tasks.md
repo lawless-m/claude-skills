@@ -39,20 +39,25 @@ output arriving at the end.
 
 ## Keep going until something objective stops you
 
-The stop conditions are exactly the four above, plus one: fewer than ~15% of the
-context window left, which is measurable. Nothing else. In particular, do **not** stop
-because the run feels long, because a lot has been done, because the next task looks
-big, or because it seems a good moment to report. Those are judgements the user cannot
-make in advance and cannot see you making — from their side an unexplained stop is
-indistinguishable from a fault.
+The stop conditions are exactly the four above: drained, halted, stalled, or a cap the
+user asked for. Nothing else. In particular, do **not** stop because the run feels long,
+because a lot has been done, because the next task looks big, because it seems a good
+moment to report, or because the context window is filling. Those are judgements the
+user cannot make in advance and cannot see you making — from their side an unexplained
+stop is indistinguishable from a fault.
 
-If you think a run should end for a reason not on that list, say so and ask. Do not
+Context is not a stop condition. Compaction is automatic, and the queue is on disk
+precisely so it survives one: after a summary, re-read `ls tasks/` and continue. The
+task descriptions, the verification commands and the working tree are all files. Nothing
+the next slice needs lives in the conversation, so there is nothing to preserve by
+stopping early — carry on and let the summary happen underneath you.
+
+If you think a run should end for a reason not on the list, say so and ask. Do not
 decide it silently and describe it afterwards as though it were a rule.
 
 Announce each slice as it starts, so a long run is followable as it happens rather than
 arriving as a wall of output at the end. That, not stopping early, is what keeps a drain
 supervisable.
 
-When the context stop does apply, say how many slices ran and what is next; resuming is
-`/tasks` again. Do not pretend a partial drain was a full one, and never mark a task done
-to keep the run going.
+Never mark a task done to keep a run going, and never report a partial drain as a full
+one.

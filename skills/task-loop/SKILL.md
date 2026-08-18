@@ -1,51 +1,81 @@
 ---
 name: task-loop
-description: Invoke once per timer tick under /loop dynamic mode — picks the next unblocked task from TASKS.md, works it, schedules the next wake-up. Not for cron-style /loop 60s.
+description: Do the next unblocked task from tasks/. Exactly one slice, then stop. Use when the user says "do the next task"; /tasks repeats it to drain the queue.
 ---
 
 # task-loop
 
-Does **one task per invocation**, then schedules the next wake-up via `ScheduleWakeup`. Designed for `/loop` in **dynamic/self-paced mode**, where the command drives its own cadence — not cron-style `/loop 60s /task-loop` (which would keep firing even after a halt). Does not create tasks (consume whatever planning wrote), does not sleep or block, does not loop within a turn.
+Does **exactly one task**, then stops and reports. Nothing else — no sleeping, no
+scheduling, no draining the queue (that is `/tasks`), no creating tasks (consume
+whatever planning wrote).
 
-## The queue is a file
+Stopping after one slice is the point: it is the unit that either succeeds and moves a
+file, or fails and leaves a reason. Everything that repeats slices is built on top.
 
-`TASKS.md` in the repository root. Not a session-scoped task list: the built-in one was keyed by session UUID, so a queue never survived opening a new conversation — fatal for any plan spanning more than one sitting. A file outlives the session, survives a crash, diffs in review, and depends only on Read/Edit/Bash.
+## The queue is a directory, and location is the state
 
-Each task is one `##` section:
+    tasks/NN.md              outstanding
+    tasks/completed/NN.md    done
 
-    ## [<status>] <id> — <subject>
-    blocked-by: <comma-separated ids, or —>
-    verify: <command>
+`ls tasks/*.md` **is** the queue. No status field to read, no file to parse, no index to
+drift out of sync — the only fact is where the file sits, and an empty `tasks/` is the
+loop's termination condition. Completing a task is a move, which git records as a
+rename, so the content stays byte-identical through its whole life.
+
+Each file:
+
+    ---
+    id: 4
+    subject: Model the MC1408 DAC settling glitch
+    blocked-by: [3]                  # ids, [] if none
+    verify: cargo test -p beam-rasteriser
+    halted: <reason>                 # optional; see below
+    ---
 
     <description — authoritative, may run to several paragraphs>
 
-`[ ]` pending, `[~]` in progress, `[x]` done. State changes are a **one-character edit** to the checkbox; nothing else moves. That keeps diffs honest and makes a half-finished edit obvious.
+A directory rather than one file, and files rather than a session-scoped list, for
+reasons that all bite in practice:
 
-If `TASKS.md` is absent, print `task-loop: no TASKS.md, nothing to drain` and STOP.
+- **Context.** A slice reads *one* task. A single queue file makes every tick re-read
+  every description to find the one it will act on — in an unattended run that is the
+  scarce resource being spent on prose it will not use.
+- **Survival.** The built-in task list was keyed by session UUID, so a queue never
+  outlived the conversation that created it. Any plan spanning more than one sitting
+  was doomed before it started.
+- **Diffs and collisions.** Finishing #7 moves one file. Two sessions on different
+  tasks never conflict, and review shows exactly what moved.
+
+If `tasks/` holds no `.md` files, print `task-loop: queue empty, nothing to do` and STOP.
 
 ## Flow
 
-Always do the slice first, then decide whether to schedule — never schedule before doing work.
+Do the slice first, then decide whether to schedule — never schedule before working.
 
-1. **Read `TASKS.md`.**
-2. **Pick** the lowest-id task that is `[ ]` **and** whose every `blocked-by` id is `[x]`. If none, print `task-loop: no unblocked pending tasks, loop complete` and STOP (no `ScheduleWakeup`).
-   - If tasks remain but all are blocked by something not `[x]`, that is a stall, not completion: print `task-loop: stalled — #<id> blocked by #<ids>` and STOP.
-3. **Mark it `[~]`** with a single `Edit` to its header line, so a crash mid-slice leaves visible evidence of what was in flight.
+1. **Read the queue**: `ls tasks/*.md tasks/completed/*.md 2>/dev/null`. Outstanding
+   work is the first list; the second is what `blocked-by` resolves against.
+2. **Pick** the lowest id in `tasks/` whose every `blocked-by` id has a file in
+   `tasks/completed/`. If none:
+   - `tasks/` empty → `task-loop: all tasks done` and STOP.
+   - files remain but all are blocked → a stall, not completion:
+     `task-loop: stalled — #<id> blocked by #<ids>` and STOP.
+3. **Read only that file.** Its description is authoritative. A `halted:` line means a
+   previous attempt stopped there — read the reason before repeating it.
 4. Announce: `task-loop: starting #<id> — <subject>`.
-5. **Do the work** in the task's description, treating it as authoritative. Don't expand scope or refactor adjacent code — every changed line should trace to the description. Run the verification commands the task names and confirm they pass.
-6. **Complete or halt** — never mark done if verification fails (partial completion ≠ completion, per CLAUDE.md):
-   - Success + verification passed → edit the header to `[x]`, print `task-loop: completed #<id>`.
-   - Failure/stuck/ambiguous → **leave it `[~]`**, print `task-loop: halted on #<id> — <one-line reason>`, STOP (no schedule). The `[~]` is the record of where it stopped; do not tidy it back to `[ ]`.
-7. **Schedule next slice**: re-read `TASKS.md`. If any unblocked `[ ]` task remains, call `ScheduleWakeup(60)` and print `task-loop: scheduled next slice in 60s`. Otherwise print `task-loop: list drained, loop complete` and don't schedule.
-8. End the turn. The next slice arrives via `/loop` + `ScheduleWakeup`.
+5. **Do the work.** Don't expand scope or refactor adjacent code — every changed line
+   should trace to the description. Run the `verify` command and any others the
+   description names, and confirm they pass.
+6. **Complete or halt** — never complete if verification fails (partial completion ≠
+   completion, per CLAUDE.md):
+   - Verified → move it: `git mv tasks/NN.md tasks/completed/` (plain `mv` if the file
+     is untracked). Print `task-loop: completed #<id>`.
+   - Failed/stuck/ambiguous → **leave it in `tasks/`** and add or update a `halted:`
+     line with a one-line reason. Print `task-loop: halted on #<id> — <reason>` and
+     STOP. Do not move it; not-done work belongs in the queue.
 
-**60 seconds is a `ScheduleWakeup` runtime floor** (clamps to `[60, 3600]`), not a choice — it's the tightest cadence available, which is what Matt wants.
+After the slice, report what is next (`task-loop: next is #<id> — <subject>`) and stop.
+Do not start it.
 
-## When NOT to schedule (let the loop end)
-
-- No unblocked pending tasks remain (normal completion).
-- The slice failed or the task couldn't be completed.
-- A task needs user input that wasn't provided, or the user intervened to change the plan.
-- If a task description is genuinely ambiguous, halt rather than guess.
-
-One commit per slice is a good default for code changes but not mandatory — some tasks (e.g. running verification) produce no commit. When a task says "do not commit", honour it; the queue file itself is part of the working tree, so a slice that commits should say whether `TASKS.md` goes with it.
+One commit per slice is a good default for code changes but not mandatory. When a task
+says "do not commit", honour it — but note the completion move is itself a change to
+the working tree, so say whether it goes with the commit or stands alone.

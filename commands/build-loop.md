@@ -1,12 +1,11 @@
 ---
-description: Plan the current goal into a finite, verifiable task list that /task-loop can drain
+description: Plan the current goal into a finite, verifiable task list that /tasks can drain
 argument-hint: [goal — omit to use what we've been working on]
 ---
 
 # build-loop
 
-Create a **finite, ordered task list** that `/loop /task-loop` can drain unattended,
-then stop. The planning itself is delegated to a Fable subagent — that's the point of
+Create a **finite, ordered task list** that `/tasks` can drain, then stop. The planning itself is delegated to a Fable subagent — that's the point of
 this command: no `/model` juggling. (Frontmatter `model:` is ignored on the typed
 slash-command path as of 2.1.226, hence the delegation.)
 
@@ -18,13 +17,15 @@ exchange rather than a whole loop.
 
 ## Steps
 
-1. **Read `TASKS.md`** in the repository root, if it exists. That file is the queue —
-   not a session-scoped task list, which was keyed by session UUID and so never
-   survived opening a new conversation. See the `task-loop` skill for the format.
+1. **Check the queue**: `ls tasks/*.md tasks/completed/*.md 2>/dev/null` in the
+   repository root. Location is the state — a file in `tasks/` is outstanding, one in
+   `tasks/completed/` is done. Not a session-scoped task list, which was keyed by
+   session UUID and so never survived opening a new conversation. See the `task-loop`
+   skill for the format.
 
-2. **If it already holds `[ ]` or `[~]` tasks**, don't silently add to them — show
-   what's there and ask whether to resume, replace, or append deliberately. Stop
-   until answered. A `[~]` means a previous slice halted mid-task; say so.
+2. **If `tasks/` is not empty**, don't silently add to it — show what's there and ask
+   whether to resume, replace, or append deliberately. Stop until answered. A `halted:`
+   line means a previous slice stopped mid-task; quote the reason.
 
 3. **Compose a planning brief** from what this session already knows. The planner is a
    fresh agent — it does NOT see this conversation, so the brief must carry:
@@ -37,17 +38,21 @@ exchange rather than a whole loop.
 4. **Spawn the planner**: `Agent` with `subagent_type: "general-purpose"`,
    `model: "fable"`, prompt = the brief plus the planning rules below, verbatim.
 
-   The planner returns task *specs*; you write them into `TASKS.md`. Keep your part
+   The planner returns task *specs*; you write them into `tasks/`. Keep your part
    mechanical.
 
-5. **Write `TASKS.md` verbatim** from the returned JSON, in array order, ids from 1.
+5. **Write `tasks/NN.md` verbatim** from the returned JSON, in array order, ids from 1,
+   zero-padded so `ls` sorts correctly.
    Copy `description` exactly as written — do not re-word, expand, or improve it. The
-   planner read the code; you did not. Prefer generating the file with a script over
-   retyping, so nothing is lost or silently "improved" in transit. Each section:
+   planner read the code; you did not. Prefer generating the files with a script over
+   retyping, so nothing is lost or silently "improved" in transit. Each file:
 
-       ## [ ] <id> — <subject>
-       blocked-by: <comma-separated ids, or —>
+       ---
+       id: <id>
+       subject: <subject>
+       blocked-by: [<ids>]
        verify: <command>
+       ---
 
        <description>
 
@@ -55,11 +60,12 @@ exchange rather than a whole loop.
    command it cites is cheap to confirm and load-bearing, spot-check it first — but
    check, don't rewrite.
 
-6. **Verify the queue before handing it over.** Parse the file back: every id unique,
+6. **Verify the queue before handing it over.** Parse the files back: every id unique,
    no `blocked-by` pointing at a missing id, and the graph drains (repeatedly removing
    runnable tasks empties the list — no cycle). A queue that cannot drain is a loop
    that cannot end. Then hand off: id, subject, one-line verification for each, then
-   `build-loop: <n> tasks in TASKS.md. Gate: #<last> — <check>. Run: /loop /task-loop`
+   `build-loop: <n> tasks in tasks/. Gate: #<last> — <check>. Run: /tasks to drain,
+   or /task-loop for a single slice`
    If the planner returned a question instead of tasks, put it to the user and stop.
 
 ## Planning rules (include verbatim in the agent prompt)
@@ -71,8 +77,7 @@ task list, as JSON and nothing else — no preamble, no commentary:
 [{"subject": "...", "activeForm": "...", "description": "...", "blockedBy": []}]
 ```
 
-- Array order is execution order — `/task-loop` takes the lowest-ID unblocked pending
-  task. Use `blockedBy` (0-based indices into this array) only for real dependencies;
+- Array order is execution order — a slice takes the lowest-id unblocked task. Use `blockedBy` (0-based indices into this array) only for real dependencies;
   plain ordering is already implied.
 - Each task is one slice of work, completable in a single turn. The `description`
   must stand alone — the executing model may have lost all conversational context by
@@ -82,6 +87,6 @@ task list, as JSON and nothing else — no preamble, no commentary:
 - Write descriptions in full. They are the deliverable; whoever relays them will copy
   them verbatim, so anything you leave implicit is lost.
 - The last task is an end-to-end gate — the check you'd use to call the whole goal
-  done. A finite list with a real final check is what makes the loop provably end.
+  done. A finite list with a real final check is what makes the drain provably end.
 - Nothing speculative. If the brief is ambiguous, return no tasks — return
   `{"question": "..."}` instead.

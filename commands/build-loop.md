@@ -7,7 +7,7 @@ argument-hint: [goal — omit to use what we've been working on]
 
 Create a **finite, ordered task list** that `/tasks` can drain, then stop. The planning itself is delegated to a Fable subagent — that's the point of
 this command: no `/model` juggling. (Frontmatter `model:` is ignored on the typed
-slash-command path as of 2.1.226, hence the delegation.)
+slash-command path, hence the delegation.)
 
 Goal: `$ARGUMENTS` — if empty, it's whatever this session has been working toward.
 State it back in one sentence before doing anything, so a misreading costs one
@@ -19,9 +19,7 @@ exchange rather than a whole loop.
 
 1. **Check the queue**: `ls tasks/*.md tasks/completed/*.md 2>/dev/null` in the
    repository root. Location is the state — a file in `tasks/` is outstanding, one in
-   `tasks/completed/` is done. Not a session-scoped task list, which was keyed by
-   session UUID and so never survived opening a new conversation. See the `task-loop`
-   skill for the format.
+   `tasks/completed/` is done. See the `task-loop` skill for the format.
 
 2. **If `tasks/` is not empty**, don't silently add to it — show what's there and ask
    whether to resume, replace, or append deliberately. Stop until answered. A `halted:`

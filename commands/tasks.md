@@ -8,14 +8,10 @@ argument-hint: [max slices — omit to drain the whole queue]
 Work the queue in `tasks/` until it is empty or something stops you. `$ARGUMENTS`, if a
 number, caps how many slices to run; otherwise drain the lot.
 
-No timer and no `ScheduleWakeup`. The old loop waited 60 s between slices only because
-that is the scheduler's floor — a cost with no benefit. Finish a slice, pick the next,
-carry on in the same turn.
+Finish a slice, pick the next, carry on in the same turn.
 
-That is safe here because **the queue is files**. A completed task is a move on disk, so
-progress does not live in the conversation: if context is summarised mid-drain, re-read
-`ls tasks/` and continue with nothing lost. A session-scoped list could not do that,
-which is why it needed a fresh turn per slice.
+Progress lives on disk, not in the conversation: a completed task is a move. If context
+is summarised mid-drain, re-read `ls tasks/` and continue with nothing lost.
 
 ## Flow
 
@@ -42,7 +38,7 @@ output arriving at the end.
 
 ## Be honest about how far this gets
 
-Long descriptions plus real work plus verification output accumulate. A queue whose
-tasks are large will exhaust context before it drains, and that is fine — say how many
-slices ran and what is next. Resuming is `/tasks` again. Do not pretend a partial drain
-was a full one, and never mark a task done to keep the run going.
+Long descriptions plus real work plus verification output accumulate, so a queue of
+large tasks will exhaust context before it drains. That is fine — say how many slices
+ran and what is next; resuming is `/tasks` again. Do not pretend a partial drain was a
+full one, and never mark a task done to keep the run going.

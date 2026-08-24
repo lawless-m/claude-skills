@@ -34,6 +34,19 @@ duckdb -c "DESCRIBE sem01.profile"
 duckdb -f query.sql
 ```
 
+**Prefer the nightly Parquet snapshots for ad-hoc tests and exploration** — they are refreshed each morning and cost the live DBISAM box nothing:
+
+| Set | Path | Contents |
+|---|---|---|
+| Exportmaster tables | `\\rivsprod02\RI Services\Outputs\Parquets\em\<table>.parquet` | Full nightly dump of every EM table — `orderh`, `orderi`, `quoteh`, `quotei`, `product`, `niingred`, `risupplier`, `country`, `customer`, `prices`, `pricdetl`, … (lower-case filenames) |
+| Other extracts | `\\rivsprod02\RI Services\Outputs\Parquets\<area>\*.parquet` | `rocs`, `crm`, `mis`, `Ingreds`, `poller`, `quotes`, `cs-em`, … |
+
+```bash
+duckdb -c "SELECT * FROM read_parquet('\\rivsprod02\RI Services\Outputs\Parquets\em\orderi.parquet') WHERE REF = 'A-26-081849'"
+```
+
+Mapped as `R:\Outputs\Parquets\em` on hosts with the `R:` drive. Go to `sem01.<table>` only when you need data newer than last night's snapshot.
+
 Read-only — for writes use the e3 application or ODBC. Full DuckDB SQL works on top (joins, aggregates, `read_parquet()` overlays). The Linux install also has `postgres_scanner`, `mysql_scanner`, and `httpfs` extensions, so DuckDB can front reads on the other databases too.
 
 ## Exportmaster / DBISAM

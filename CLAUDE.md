@@ -62,6 +62,21 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ---
 
+## 5. Version Control
+
+**Commit on the branch that is checked out. Never branch first.**
+
+- When asked to commit, commit on the current branch -- usually `main`. Do not create a feature
+  branch, and do not ask whether to. If a branch is genuinely wanted, I will say so.
+- These are solo repos with no PR review. Several deploy manually from the working tree, so a
+  side branch leaves production running code that `main` does not contain.
+- Stage files explicitly (`git add <paths>`), never `git add -A`. My working trees carry
+  spreadsheets, notes and scratch output that must never be committed.
+- Commit when asked. Push only when asked -- `main` often sits well ahead of `origin/main` by
+  choice.
+
+---
+
 ## Preferred CLI Tools
 
 Our dev hosts have modern CLI tools installed — prefer them in shell commands. (If one is missing on this host, say so; install via cargo-binstall / dotnet tool / apt as appropriate.)

@@ -79,10 +79,16 @@ say so rather than guessing at a procedure that hasn't been verified for it.
     artefact and (if step 4's data backup was used) the data file, then
     hash-verify the rollback landed correctly.
 
-11. **Record the deployed hash and clean up.** Once verified, remove the
-    `.bak` copies (or leave them briefly if the user wants a grace period)
-    and mention that `DeployDrift.ps1`'s next run will pick this deploy up as
-    `OK` — it's the durable record, not this conversation.
+11. **Record the deploy and clean up.** Once verified, log it to the deploy
+    history so there's a durable record beyond this conversation:
+    ```
+    pwsh -File R:\Scripts\Record-Deploy.ps1 -SqliteOut R:\Outputs\Parquets\deploy\deploy_history.sqlite `
+      -Assembly <name> -Project <name> -FromHash <step-2-hash> -ToHash <step-8-hash> `
+      -DeployedBy <user> [-Note "..."]
+    ```
+    (Source: `~/Git/Deployment/scripts/Record-Deploy.ps1`.) Then remove the
+    `.bak` copies (or leave them briefly if the user wants a grace period).
+    `DeployDrift.ps1`'s next run will independently confirm this as `OK`.
 
 ## Important Rules
 

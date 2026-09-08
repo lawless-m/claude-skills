@@ -44,6 +44,13 @@ guessing at a procedure that hasn't been verified for it.
      safety net catching a forgotten copy of a companion file the way there
      is for the binary. Treat every documented companion file with the same
      rigor as the exe: back up, copy, hash-verify.
+   - **Does the project already have a deploy script?** Look for a
+     `deploy.ps1` (or equivalent) in the repo root *before* doing any of
+     this by hand. If there is one, read it and run it — it is the verified
+     procedure for that project, and re-deriving the steps in conversation
+     is exactly how a project-specific flag gets dropped. If there isn't
+     one, see **Writing a deploy script** below: the default is to write and
+     commit one as part of this deploy, not to hand-execute steps 2-11 again.
    - If asked to deploy something that isn't a recognisable .NET or Rust
      CGI/task project, stop and say so instead of improvising.
 
@@ -68,7 +75,15 @@ guessing at a procedure that hasn't been verified for it.
      turned a bug into 25,360 deleted rows during the Translation fix.
 
 5. **Build.**
-   - .NET: `dotnet publish -c Release` from the project directory.
+   - .NET: `dotnet publish -c Release` from the project directory — but
+     only once the csproj declares everything the deployed artefact needs.
+     A CGI exe here typically needs `<RuntimeIdentifier>`, `<SelfContained>`
+     and `<PublishSingleFile>`; without them the publish still *succeeds*
+     and quietly emits a small framework-dependent exe that cannot run as a
+     CGI. DDBMakerCGI's csproj declared none of them, so the documented
+     build produced 156 KB against a live 107 MB binary. Put those
+     properties **in the csproj, never on the command line**, so no
+     invocation can leave them off.
    - Rust: `cargo build --release` from the crate directory (or
      `--manifest-path` from anywhere). Check the crate's `Cargo.toml`/README
      for any non-default features the *deployed* binary needs — most CGI
@@ -103,6 +118,12 @@ guessing at a procedure that hasn't been verified for it.
    every deployed file (the exe and every companion file) must equal SHA-256
    of what was just built/copied.
 
+   Hash equality only proves the copy landed — it says nothing about whether
+   the *right thing* was built. Check the artefact's shape as well: a
+   framework-dependent .NET publish verifies perfectly clean by hash while
+   being the wrong binary entirely, and only its size gives it away. A size
+   floor is the cheapest test that catches that.
+
 9. **Smoke-test the real entry point end-to-end** — an actual CGI request or
    an actual run of the scheduled exe, not just launching it and checking
    exit code 0 (the Feb build printed "Action completed successfully" on
@@ -129,8 +150,53 @@ guessing at a procedure that hasn't been verified for it.
     (companion files aren't covered yet — see the Deployment repo's open
     questions).
 
+## Writing a deploy script
+
+Once a deploy has been worked out by hand it should not need working out by
+hand again. If the project has no deploy script, write one as part of the
+deploy and commit it — a chat transcript is not a durable record of a
+procedure, which is the same class of problem as a binary that exists only on
+a share.
+
+`~/Git/DDBMakerCGI/deploy.ps1` is the reference: it implements steps 2-11 for
+one project in ~130 lines. A compatible script has to:
+
+- **Refuse a dirty tree** unless explicitly overridden (`-AllowDirty`), and
+  capture the commit sha and subject for the deploy note.
+- **Hash the live artefact first, then back it up.** With `<PublishDir>`
+  pointing at the destination the publish overwrites production directly, so
+  the backup cannot be taken after it.
+- **Read the destination out of the project file** instead of repeating it in
+  the script. `DeployDrift.ps1` resolves the build from `<PublishDir>`; a
+  script with its own hardcoded copy of that path can silently disagree with
+  the drift report about where the binary is supposed to be.
+- **Verify by hash and by shape** — see step 8.
+- **Smoke-test the real entry point and assert something specific about the
+  response**, not just HTTP 200. DDBMakerCGI's script checks for the `DUCK`
+  magic at offset 8 of the served database.
+- **Roll back in a `catch`** wrapping everything from the publish onward:
+  restore the backup over the artefact and hash-verify the restore landed.
+- **Call `Record-Deploy.ps1`** with the before/after hashes.
+- **Remove the backup only on success** — a failed run keeps it.
+
+Write it, then run it for the deploy at hand; the first real run is also the
+test of the script. Note that the destination is machine-specific
+(`R:\TinyWeb\www\cgi-bin\`) — that is the estate's existing convention,
+not something this procedure introduces.
+
+If the project also lacks a `<PublishDir>`, add one while you are there.
+Without it `DeployDrift.ps1` reports the artefact `NO-BUILD` on every run,
+which means the deployed binary is never compared to anything. Pointing it at
+the destination is preferred (see the rules below); where that isn't wanted, a
+declared staging directory still brings the project under coverage and keeps
+the hop-2 "built but never copied" signal that publishing straight to
+`cgi-bin` collapses.
+
 ## Important Rules
 
+- **Prefer the project's own deploy script to doing it by hand**, and where
+  there isn't one, leave one behind. Hand-running this procedure is the
+  fallback, not the default.
 - **Hash, never trust mtime.** A file copy preserves mtime; only bytes prove
   a deploy happened.
 - **Prefer `<PublishDir>` pointing straight at the deploy destination** (the

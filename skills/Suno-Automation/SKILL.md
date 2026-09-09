@@ -117,6 +117,37 @@ return JSON.stringify(out,null,2);
 ```
 `/tmp/run_suno.sh /tmp/fill.js`
 
+## 4b. Set Vocal Gender (v6) — AFTER filling, never before
+
+v6 (`chirp-hawk`) no longer takes the singer's sex from the style text alone. Left on the
+default, one variant of a pair comes back male and the other female even when the styles say
+"female vocal". Set the control explicitly for any band with a fixed singer.
+
+Two traps, both learned the hard way:
+
+- **Filling the form clears the selection.** The Lyrics/Styles/Title writes reset Vocal Gender to
+  nothing selected. Set it *after* step 4 and re-check it immediately before pressing Create.
+- **`.click()` does not drive it.** Dispatch the full pointer sequence instead.
+
+```js
+// /tmp/gender.js  — 'Female' or 'Male'
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const vis=e=>e.offsetParent!==null;
+const WANT='Female';
+const b=[...document.querySelectorAll('button')].filter(vis).find(x=>x.innerText.trim()===WANT);
+if(!b) return 'no '+WANT+' button';
+['pointerdown','mousedown','pointerup','mouseup','click'].forEach(t=>b.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,view:window})));
+await sleep(800);
+return [...document.querySelectorAll('button')].filter(vis)
+ .filter(x=>/^(Male|Female)$/.test(x.innerText.trim()))
+ .map(x=>x.innerText.trim()+'='+x.dataset.selected).join(',');
+```
+Expect `Male=false,Female=true`. Guard the Create step on it — if the flag is not set, do not
+spend the credits.
+
+Note the sibling `Custom`/`Auto` buttons belong to the sliders below, not to Vocal Gender.
+`Auto=true` alongside `Female=true` is normal.
+
 ## 5. Press Create (Turnstile solves itself)
 
 ```js
@@ -156,6 +187,8 @@ Read-only Suno data (library, billing, projects) is available the same way — c
 ## Gotchas (each cost real time to learn)
 
 - **Turnstile domain-lock (110200):** generation only works on real `suno.com`. Non-negotiable.
+- **Vocal Gender resets on fill, and ignores `.click()`:** see step 4b. Under v6 this is the
+  difference between keeping a band's singer and getting a coin flip.
 - **Title reverts to empty:** filling Title before Lyrics loses the title — the Lexical
   `setEditorState` call re-renders the form and clobbers it. Fill Styles + Lyrics first, Title
   last, and verify all three values right before pressing Create.
@@ -176,7 +209,7 @@ Read-only Suno data (library, billing, projects) is available the same way — c
 - **Don't read "credits" from `/api/billing/info/`** — that field is a plan/tier number, not the
   balance shown in the UI.
 
-## Selectors quick-reference (Suno /create, as of 2026-07)
+## Selectors quick-reference (Suno /create, as of 2026-09, model v6 `chirp-hawk`)
 
 | Field | Selector | How to set |
 |-------|----------|-----------|
@@ -184,6 +217,7 @@ Read-only Suno data (library, billing, projects) is available the same way — c
 | Styles | `textarea[maxlength="1000"]` | native textarea setter + events |
 | Lyrics | `[aria-label="Lyrics editor"]` (Lexical) | `el.__lexicalEditor.setEditorState(...)` |
 | Create button | `button[aria-label="Create song"]` | `.click()` |
+| Vocal Gender | visible `button` whose text is `Male`/`Female` | full pointer-event sequence; check `dataset.selected` |
 
 Selectors may drift as Suno ships UI changes — re-enumerate
 (`document.querySelectorAll('textarea, input, [contenteditable]')` with placeholders/aria) if a

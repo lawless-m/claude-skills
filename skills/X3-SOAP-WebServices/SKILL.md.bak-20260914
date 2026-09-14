@@ -33,7 +33,7 @@ A SOAP call hits Syracuse → assigns to a pool worker → optional CHGUSR → r
 ## 4GL syntax gotchas (Adonix)
 
 - **Line continuation is `&` (not `_`).** Trailing underscore = `Illegal character` compile error.
-- **A `Subprog` exits at `End`. Never use `Return` in a Subprog.** `Return` is the exit from a `Gosub`; a `Return` with no matching `Gosub` pops the wrong frame in the SOAP pool channel process. The service then runs exactly ONCE per channel, and every later call on that channel comes back HTTP 200 / status 0 / `poolExecDuration` ~1 ms with no outputs and nothing done -- until the pool is restarted. Nothing in the trace says why. (Proven by A/B 2026-09-14: identical subprograms with and without `Return`; Datel's 17 shipped subprograms contain zero `Return`s.) For early exits use a flag (`WOK`) and nested `If`, and fall through to the single `End`.
+- **Use `Return` (not `End`) to exit a Subprog early.** `End` halts the entire Adonix process.
 - **Files**: declare with the table code, alias the abbreviation:
   ```
   Local File BPCUSTOMER [BPC]
@@ -176,10 +176,6 @@ In the response's `traceRequest` CDATA, look for:
 
 ## Reference: scalar subprog
 
-Single fall-through exit at `End`, early exits via a flag. **No `Return`** --
-see the gotchas: a `Return` in a Subprog corrupts the pool channel and the
-service silently stops working after one call per channel.
-
 ```
 ##############################################################################
 # Set ZEMSTAGE on a single BP Customer.
@@ -192,34 +188,25 @@ Variable Integer O_RETCODE
 Variable Char    O_ERRMSG()
 
 Local File BPCUSTOMER [BPC]
-Local Integer WOK
-WOK = 1
 
 Trbegin [BPC]
 Read [BPC]BPC0 = I_BPCNUM
 If fstat
   O_RETCODE = 1
   O_ERRMSG  = "Customer not found"
-  WOK = 0
+  Rollback : Return
 Endif
-
-If WOK = 1
-  [F:BPC]ZEMSTAGE = I_NEW_STAGE
-  Rewrite [F:BPC]
-  If fstat
-    O_RETCODE = 4
-    O_ERRMSG  = "Write failed"
-    WOK = 0
-  Endif
+[F:BPC]ZEMSTAGE = I_NEW_STAGE
+Rewrite [F:BPC]
+If fstat
+  O_RETCODE = 4
+  O_ERRMSG  = "Write failed"
+  Rollback : Return
 Endif
-
-If WOK = 1
-  Commit
-  O_RETCODE = 0
-  O_ERRMSG  = "OK"
-Else
-  Rollback
-Endif
+Commit
+O_RETCODE = 0
+O_ERRMSG  = "OK"
+Return
 
 End
 ```
@@ -277,6 +264,7 @@ For WI = 0 To 99
 Next
 
 O_ERRMSG = "Updated " + num$(O_COUNT) + " of " + num$(WTRIED) + " to stage " + num$(I_NEW_STAGE)
+Return
 
 End
 ```

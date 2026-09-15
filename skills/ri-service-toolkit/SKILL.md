@@ -427,6 +427,40 @@ ssh vsprod 'cd /var/www/html/dw && cp liveboards.html liveboards.html.bak-$(date
 - Images for TinyWeb boards live **flat** in `\\rivsprod02\RI Services\TinyWeb\www\pibs\`
   (`suma.png`, `Sugro.png`, `credits.png`) and are referenced as `/tiny02/pibs/<name>.png`.
 
+**The picture: one small file, one large, and a hover.** When a board gets an illustration
+(the user usually supplies a 1024px PNG of 1-2 MB), do not ship the original. The house pattern,
+from Jerboa (`jerboa-logo.png` / `jerboa-large.png`) and Chestnut (`chestnut.jpg` /
+`chestnut-large.jpg`):
+
+- **`<name>.jpg`, 512px, ~70 KB** — the portal thumbnail *and* the board's header logo. The
+  neighbours in `pibs\` run 10-340 KB; a 1.7 MB thumbnail on a page of twenty cards is rude.
+- **`<name>-large.jpg`, full size, ~200 KB** — shown only on hover over the header logo, so its
+  weight is paid lazily. Make both with Pillow (`uv run --with pillow`): `resize((512,512),
+  Image.LANCZOS)` and `save(..., quality=88, optimize=True)`; a JPEG, because these are
+  photographs and the PNG is 8x the size for nothing.
+- **Keep the original PNG in the repo** beside the page as the source; commit the two JPEGs
+  too, and have `deploy.ps1` copy them to `pibs\` with the page, hash-verified like the exe.
+- **The hover markup**, in the board's header — the container is what gets the `:hover`, so
+  the popup stays open while the pointer moves down onto it:
+
+  ```html
+  <span class="logo-container">
+    <img class="logo" src="/tiny02/pibs/<name>.jpg" alt="" onerror="this.parentElement.remove()">
+    <img class="logo-popup" src="/tiny02/pibs/<name>-large.jpg" alt="" loading="lazy">
+  </span>
+  ```
+  ```css
+  .logo-container { position:relative; display:inline-block; }
+  .logo { width:48px; height:48px; display:block; }
+  .logo-popup { display:none; position:absolute; left:0; top:56px; z-index:1000; width:480px;
+                border:1px solid #ddd; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,.3);
+                background:#fff; padding:5px; }
+  .logo-container:hover .logo-popup { display:block; }
+  ```
+  `onerror` on the small image removes the whole container, so a missing picture leaves a
+  clean header rather than two broken icons. The portal card uses the small JPEG with the
+  card's own `onerror="this.remove()"`, as above.
+
 **Write the `desc` like a library catalogue entry, not a press release.** One short line saying
 what the thing *is*. This is a portal — the reader is scanning twenty cards to find one. Match the
 neighbours (`"Sales — Suma."`, `"Weekly product availability."`). **Do not put findings, headline

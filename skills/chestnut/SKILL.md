@@ -106,6 +106,25 @@ was.
 - Passing `ssh beast` a command prints a port 5905 forwarding warning. It's harmless;
   `-o ClearAllForwardings=yes` silences it.
 
+**Long-running servers** (decided 2026-09-17, first case `food-packaging-ocr` on beast):
+one `run_start`/`run_end` pair covers the whole life of the server process, with one event per
+request in between. This changes the standard itself, so it needs **a written proposal the user
+has reviewed before any code**. The standard (`01`) was written for one process per run, so
+the proposal must settle:
+- **A schema change first.** `trigger` is `http`/`schedule`/`manual` and none fits a server.
+  Agree the new value with the user (e.g. `service`), then add it to `01` along with its
+  `run_start`/`run_end` data fields, in both libraries.
+- **`run_end` on shutdown.** systemd stops a unit with SIGTERM, so the crate needs a signal
+  handler that emits `run_end`. SIGKILL and the OOM killer leave no `run_end`. The next
+  `run_start` from a new pid is the only evidence, so the monitor should treat a new run
+  following an unfinished one as a crash.
+- **Dashboard changes.** `Chestnut.Monitor` shows a run with no end as `running`, and decides
+  "overdue" from a cron schedule. A server has no schedule, so it needs its own states
+  (up, restarted, down), not the scheduled-task ones.
+- **Request events.** Give each request its own `request_id` (or accept an incoming one) and
+  log it on the request event, so requests can be grouped. Agree the event name and data
+  fields with the user and record them in `01`.
+
 **Every Linux host:**
 - Set `CGILOG_ROOT=/var/log/ri-services` wherever the program is started: crontab line,
   systemd unit `Environment=`, or a wrapper script. If this is missing or wrong, Vector watches

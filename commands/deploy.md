@@ -94,6 +94,28 @@ guessing at a procedure that hasn't been verified for it.
    Either way, confirm the output actually changed (new mtime/hash) — a
    build that silently no-ops looks identical to a successful one otherwise.
 
+   **If the project does not yet stamp its commit into the artefact, add that
+   now, as part of this deploy.** The flow here is edit code → make binary →
+   test binary → update documentation → commit code, so at the moment of the
+   build the commit does not exist yet. The .NET SDK stamps `SourceRevisionId`
+   (HEAD at build time) into `ProductVersion` automatically, which under this
+   flow names the commit *before* the code in the binary. `Rupert.Cgi.exe`,
+   `CS-EM2Parquet.exe` and `T0_Report.exe` were each built seconds before the
+   commit that held their code and each shipped naming the wrong one.
+
+   That matters because of what it does to the drift board: a binary built from
+   an uncommitted tree is stamped with HEAD, has no source commits after HEAD,
+   and therefore reads **`OK`** — green, with uncommitted code in production.
+   Overriding the stamp with `git describe --always --dirty` turns that into
+   `UNTRACEABLE`. Green that should be red is the failure worth spending on;
+   red that should be green only costs a redeploy.
+
+   Reference implementations: `~/Git/Rupert` (csproj `StampCommitId` target —
+   mind that `--` is illegal inside an XML comment) and `~/Git/Pintail`
+   (`build.rs` emitting a `RIBUILDSTAMP:` literal, since Rust has no version
+   resource). Both use the dirty flag, which ignores untracked files, so
+   scratch beside the project does not mark every build dirty.
+
 6. **Test against a scratch copy first if the service touches data.** Never
    let the first run of new code touch production data or state. Copy the
    real input/output files to a scratch location, point the exe at the copies
@@ -123,6 +145,12 @@ guessing at a procedure that hasn't been verified for it.
    framework-dependent .NET publish verifies perfectly clean by hash while
    being the wrong binary entirely, and only its size gives it away. A size
    floor is the cheapest test that catches that.
+
+   Then read the stamp back out of the deployed artefact and assert it is this
+   commit: `(Get-Item $exe).VersionInfo.ProductVersion` for .NET, `<exe>
+   --build-stamp` for the Rust ones. A `-dirty` stamp on a production deploy is
+   a failure unless it was explicitly asked for — it means the bytes on the
+   share match no commit at all.
 
 9. **Smoke-test the real entry point end-to-end** — an actual CGI request or
    an actual run of the scheduled exe, not just launching it and checking
@@ -170,7 +198,9 @@ one project in ~130 lines. A compatible script has to:
   the script. `DeployDrift.ps1` resolves the build from `<PublishDir>`; a
   script with its own hardcoded copy of that path can silently disagree with
   the drift report about where the binary is supposed to be.
-- **Verify by hash and by shape** — see step 8.
+- **Verify by hash, by shape, and by stamp** — see step 8. Check the stamp
+  *before* copying where the deploy is a two-hop copy (Rust), so a mis-stamped
+  binary never reaches the share at all.
 - **Smoke-test the real entry point and assert something specific about the
   response**, not just HTTP 200. DDBMakerCGI's script checks for the `DUCK`
   magic at offset 8 of the served database.
@@ -199,6 +229,10 @@ the hop-2 "built but never copied" signal that publishing straight to
   fallback, not the default.
 - **Hash, never trust mtime.** A file copy preserves mtime; only bytes prove
   a deploy happened.
+- **A commit sha stamped at build time names the commit BEFORE the one you
+  want**, because the binary is built before the commit exists. Read `-dirty`
+  as "built by hand, never went through the deploy script" — which is exactly
+  what it means, and exactly what must not be in production.
 - **Prefer `<PublishDir>` pointing straight at the deploy destination** (the
   Anthea pattern, .NET only) — no manual copy hop to forget. Rust has no
   equivalent shortcut; its hop-2 copy always needs doing and verifying by

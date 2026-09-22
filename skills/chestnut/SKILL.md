@@ -1,6 +1,6 @@
 ---
 name: chestnut
-description: Use when told to "use /chestnut for logging", or when adding structured logging to, or converting the logging of, an RI CGI program or scheduled task — the Chestnut JSON Lines standard, library, Vector shipping and dashboard.
+description: Use when told to "use /chestnut for logging", or when adding structured logging to, or converting the logging of, an RI CGI program or scheduled task — the Chestnut JSON Lines standard, library, Vector shipping and dashboard. Also for Chestnut tracing and verification work — trace events, CGILOG_TRACE, program specs and chestnut-verify.
 ---
 
 # Chestnut
@@ -9,6 +9,9 @@ Chestnut is RI's structured logging standard for CGI programs and scheduled task
 library that appends JSON Lines to `C:\RI Services\Logs\<program>\<program>_YYYY-MM-DD.jsonl`,
 Vector shipping them to a consolidated tree, and a dashboard over that tree
 (`https://dw.ramsden-international.com/tiny02/pibs/chestnut.html`).
+
+On top of that sits a verification layer — trace events, a per-program spec, and the
+`chestnut-verify` checker — which is the same instrumentation serving a second purpose (§4).
 
 ## 1. Make sure the repo is present
 
@@ -24,9 +27,11 @@ relative `ProjectReference`, so it has to be a sibling of the program's repo.
 The repo is the source of truth; this skill only points into it.
 
 - `README.md` — library API, env vars (`CGILOG_ROOT`, `CGILOG_LEVEL`, `CGILOG_STDERR`,
-  `CGILOG_TRIGGER`, `CGILOG_SCHEDULE`), guarantees, dashboard, build/test.
+  `CGILOG_TRIGGER`, `CGILOG_SCHEDULE`, `CGILOG_TRACE`), guarantees, dashboard, build/test.
 - `logging-standard/06-conversion-playbook.md` — **the procedure**, with its checklist.
 - `logging-standard/01-log-event-schema.md` — the event contract, kept to hand.
+- `verification-standard/CONTENTS.md` — the tracing and verification set, if the job touches
+  it (§4 below).
 - `conversions/elastifetch-survey.md` — the reference conversion (scheduled task, M.E.Logging
   adapter, deploy, first-run verification). `conversions/x3_4gl-survey.md` is a second one
   (a generic tool whose schedule comes from `CGILOG_SCHEDULE` set by the calling .bat).
@@ -55,12 +60,71 @@ The repo is the source of truth; this skill only points into it.
 - Verification isn't done at deploy: the first real scheduled run, under the task's own
   account, must be confirmed in the log and via Vector, and recorded in the survey.
 
-## 4. Rust
+## 4. Tracing and verification
+
+`verification-standard/` is the repo's second standard: what a program is *meant* to do,
+checked mechanically against what Chestnut recorded it doing — in tests, under injected
+faults, and eventually in production. Start at `verification-standard/CONTENTS.md`, then
+`00-overview.md`. It extends the logging standard and replaces none of it; where the two
+disagree, `logging-standard/01` (the event contract) wins.
+
+**Status.** Phases 0–4 are done against pilot 1, ExportKing. **Phase 5 is a gate**: an
+evaluation for the owner whose answer decides whether more gets built. So don't spec a
+second program, don't build the checker commands `04-checker.md` designs but `verify/`
+doesn't have (`render`, `coverage`, `metrics`, `diff`), and don't start Phase 6 or later,
+without the user saying so. Each phase's "Done" note is in `10-tasks.md`; `P0`–`P4`
+findings docs in the same folder are what they produced, and are the honest record of what
+each part was worth.
+
+- **Trace events are Chestnut events** (D-4). `trace_transition`, `trace_resource`,
+  `trace_budget`, `trace_fault`, `trace_verdict` — written to the program's ordinary daily
+  file, shipped by Vector like anything else. No separate stream and no separate file.
+  `03-trace-events.md` is the contract; a transition's outcome is `data.result`, never
+  `data.outcome` (D-11), and a `seq` gap or a truncated trace event makes the whole run's
+  trace incomplete rather than passing.
+- **`CGILOG_TRACE`** (`off`, `on`, or a comma-separated machine list; default `off`) is the
+  only gate. Trace events are `level: debug` but are deliberately exempt from `CGILOG_LEVEL`
+  (D-12) — otherwise raising a program's level silently empties its traces.
+- **The C# surface already exists** in `src/Chestnut/Trace.cs`: set `log.Spec = "name@version"`,
+  take `var s = log.Machine("session")`, then `s.Transition(node, result, code)`,
+  `s.Resource(res, op)`, `s.Budget(budget, op, elapsedMs)`, `s.Child("query")`. An untraced
+  instance is inert, so instrumented code needs no null checks and no `if`. Emit where the
+  outcome is *known*, never on entry and never "about to".
+- **A reusable library declares its own trace seam and takes no dependency on Chestnut**
+  (D-15): ExportKing has `IDbisamTrace`, and the consumer writes the ~40-line adapter
+  (`pilots/ExportKing.Probe/ChestnutTrace.cs`). A library has no run of its own, so it emits
+  through its caller's logger.
+- **The spec lives in the program's repo**, not in Chestnut — `~/Git/ExportKing/spec/exportking.spec.json`
+  is the only one so far, and it is private (D-8: cite `../Derek/DBISAM-PROTOCOL.md`, never
+  reproduce it). `01-spec-format.md` is the format. `02-process-machine.md` is the shared
+  run-to-completion machine every process program inherits — P1–P8, the exit-code table, the
+  CGI variant C1–C5 — as `verification-standard/spec/shared/process.spec.json`.
+- **The checker is `verify/`**, the `chestnut-verify` Rust crate: `check <spec>` (S4, S5, S6),
+  `traces <spec> <events.jsonl>...` (T1, T4, T5, T7, T8) and `fmt [--check] <spec>`. Its tests
+  are one failing and one passing fixture per rule; a new rule brings both. Trace and spec must
+  share a vocabulary: `node`, `res` and `budget` values are spec IDs, and a name the trace
+  carries that the spec doesn't declare is a finding (D-16).
+- **Production tracing is not settled** (Q-3, Q-10). Tests set `CGILOG_TRACE=on`; the estate
+  stays `off` until the owner answers and until the dashboard stops counting `trace_*` in a
+  run's event count (Phase 6). Turning tracing on in production is not part of a conversion.
+- **No Rust tracing yet.** The Rust writer itself doesn't exist (Q-5, Phase 7); the trace
+  surface comes after it.
+
+**Where this meets a conversion.** A logging conversion stays what §3 says — logging only.
+Instrumenting a program is separate work, and if it's wanted, the order pilot 1 established is
+instrument first, read the trace by hand, then spec: four of ExportKing's five known findings
+were visible in the trace with no spec at all. `10-tasks.md` explains why that order changed.
+
+## 5. Rust
 
 `logging-standard/04-library-rust.md` is the spec. Check whether the crate exists yet
 (`~/Git/Chestnut/rust/chestnut/Cargo.toml`). If it doesn't, building it is its own piece of
 work, done and tested in the Chestnut repo before any Rust program uses it. Don't write the
-format by hand inside the program.
+format by hand inside the program. Where it should live is now an open question — Q-11 in
+`verification-standard/09-decisions-and-open-questions.md` asks whether it's a workspace in
+this repo beside `src/` or its own repo — so settle that with the user first. The trace
+surface of §4 comes after the writer, not with it. `verify/` is a separate crate and is the
+checker, not the library.
 
 When building the crate:
 - **Match the C# library's events and env vars.** The spec predates the C# code, so it doesn't
@@ -148,7 +212,7 @@ the proposal must settle:
 Consumers use a path dependency, the Rust equivalent of the C# `ProjectReference`:
 `chestnut = { path = "../Chestnut/rust/chestnut" }`.
 
-## 5. New programs
+## 6. New programs
 
 The playbook is about converting existing programs. A new program has no baseline, so skip the
 survey and baseline steps. Everything else still applies from the first commit: initialise

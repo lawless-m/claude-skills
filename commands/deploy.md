@@ -68,11 +68,21 @@ guessing at a procedure that hasn't been verified for it.
 
 4. **Back up before touching anything** — every deployed file that's about
    to change:
-   - The currently-deployed artefact (`Name.exe.bak-YYYYMMDD`).
+   - The currently-deployed artefact.
    - Any documented companion file from step 1 (properties/prompt/data/html).
    - Any data file the new build will rewrite (e.g. a Parquet file the exe
      reads and rewrites in place). Skipping this on the data side is what
      turned a bug into 25,360 deleted rows during the Translation fix.
+
+   **Backups go in `R:\Outputs\deploy-backups\<Assembly>\`, never beside the
+   file they copy.** Writing `Name.exe.bak-YYYYMMDD` into `cgi-bin` was the
+   earlier convention and it was a bad one on two counts. `cgi-bin` and `www`
+   are *served*: a `.html.bak` there is fetchable over HTTP, and stale exes sit
+   in the CGI directory. And because the copies are only removed by a run that
+   reaches step 11, every failed or hand-run deploy left one behind — 458 MB
+   of them had accumulated across the estate by 2026-09-22, which is what
+   prompted this change. Keep the naming (`Name.exe.bak-yyyyMMdd-HHmmss`), just
+   not the location.
 
 5. **Build.**
    - .NET: `dotnet publish -c Release` from the project directory — but
@@ -161,7 +171,7 @@ guessing at a procedure that hasn't been verified for it.
    Know what "worked" means for this specific service before calling it done.
 
 10. **Roll back on failure.** Know the rollback command before you start, not
-    after something breaks: restore the `.bak` copy over every deployed file
+    after something breaks: restore step 4's copy over every deployed file
     that changed (exe and companions) and (if step 4's data backup was used)
     the data file, then hash-verify the rollback landed correctly.
 
@@ -172,11 +182,18 @@ guessing at a procedure that hasn't been verified for it.
       -Assembly <name> -Project <name> -FromHash <step-2-hash> -ToHash <step-8-hash> `
       -DeployedBy <user> [-Note "..."]
     ```
-    (Source: `~/Git/Deployment/scripts/Record-Deploy.ps1`.) Then remove the
-    `.bak` copies (or leave them briefly if the user wants a grace period).
-    `DeployDrift.ps1`'s next run will independently confirm the exe as `OK`
-    (companion files aren't covered yet — see the Deployment repo's open
-    questions).
+    (Source: `~/Git/Deployment/scripts/Record-Deploy.ps1`.) Then remove this
+    run's backups from `R:\Outputs\deploy-backups\<Assembly>\` (or leave them
+    briefly if the user wants a grace period). `DeployDrift.ps1`'s next run
+    will independently confirm the exe as `OK` (companion files aren't covered
+    yet — see the Deployment repo's open questions).
+
+    Sweep the same directory at the *start* of the next run too. Removing
+    backups only on success means a failed deploy keeps its rollback source —
+    which is right — but nothing ever collects them afterwards, and that is
+    exactly how the estate accumulated 458 MB of them. Deleting the previous
+    run's leftovers once a new run has taken its own backup bounds the growth
+    without ever leaving a deploy without a rollback.
 
 ## Writing a deploy script
 
@@ -191,9 +208,10 @@ one project in ~130 lines. A compatible script has to:
 
 - **Refuse a dirty tree** unless explicitly overridden (`-AllowDirty`), and
   capture the commit sha and subject for the deploy note.
-- **Hash the live artefact first, then back it up.** With `<PublishDir>`
-  pointing at the destination the publish overwrites production directly, so
-  the backup cannot be taken after it.
+- **Hash the live artefact first, then back it up** into
+  `R:\Outputs\deploy-backups\<Assembly>\`, not next to the original. With
+  `<PublishDir>` pointing at the destination the publish overwrites production
+  directly, so the backup cannot be taken after it.
 - **Read the destination out of the project file** instead of repeating it in
   the script. `DeployDrift.ps1` resolves the build from `<PublishDir>`; a
   script with its own hardcoded copy of that path can silently disagree with
@@ -207,7 +225,9 @@ one project in ~130 lines. A compatible script has to:
 - **Roll back in a `catch`** wrapping everything from the publish onward:
   restore the backup over the artefact and hash-verify the restore landed.
 - **Call `Record-Deploy.ps1`** with the before/after hashes.
-- **Remove the backup only on success** — a failed run keeps it.
+- **Remove this run's backup only on success** — a failed run keeps it — and
+  **sweep the previous run's leftovers at the start**, once this run's own
+  backup is safely taken.
 
 Write it, then run it for the deploy at hand; the first real run is also the
 test of the script. Note that the destination is machine-specific
@@ -241,6 +261,12 @@ the hop-2 "built but never copied" signal that publishing straight to
 - **A companion file is not covered by `DeployDrift.ps1`.** For Rust
   projects especially, don't let "the exe verified fine" stand in for "the
   deploy is done" — check every file the project's own docs say it deploys.
+- **Never write a backup into a served directory.** `cgi-bin`, `www` and
+  `pibs` are reachable over HTTP; a `.bak` there is a stale copy of production
+  that anyone can fetch. Backups belong in `R:\Outputs\deploy-backups\`.
+  Hand-made checkpoint files whose names record an intent (`cages.html
+  .bak-20260914-precagezero`) are someone's working history, not deploy
+  residue — leave those alone and ask before touching them.
 - **Never skip the backup or the scratch-copy test** to save time on a
   production deploy, even for a "small" fix — the Translation fix looked
   small too, and untested-in-practice code deleted 25,360 rows on first

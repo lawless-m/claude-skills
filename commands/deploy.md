@@ -22,6 +22,15 @@ guessing at a procedure that hasn't been verified for it.
 ## Instructions
 
 1. **Identify the target and how it's built.**
+   - **One program per deploy, taken from where `/deploy` is called.** Some
+     repos hold many programs (`RocsMiddleware` has a dozen, each in its own
+     folder with its own csproj). When the working directory is a project
+     folder — it holds the csproj/`Cargo.toml` or its `deploy.ps1` — that
+     project is the target and **nothing else is deployed**. Called from a
+     multi-project repo root with no program named, ask which one; don't
+     infer it from recent commits. Never run a repo-wide publish
+     (`RocsMiddleware\check-published.ps1 -Publish` republishes every stale
+     project) as a way of deploying one.
    - **.NET**: resolve the project by its csproj's `<AssemblyName>`, not by
      guessing from the repo or exe name — they often differ
      (`TranslationRefsProds.exe` is built by the `Translation` repo). Read
@@ -45,8 +54,10 @@ guessing at a procedure that hasn't been verified for it.
      is for the binary. Treat every documented companion file with the same
      rigor as the exe: back up, copy, hash-verify.
    - **Does the project already have a deploy script?** Look for a
-     `deploy.ps1` (or equivalent) in the repo root *before* doing any of
-     this by hand. If there is one, read it and run it — it is the verified
+     `deploy.ps1` (or equivalent) in the project's own folder, then the repo
+     root for a single-program repo, *before* doing any of this by hand. In a
+     multi-program repo the script belongs beside the csproj
+     (`RocsMiddleware\X3CustomerPull\deploy.ps1`), never at the root. If there is one, read it and run it — it is the verified
      procedure for that project, and re-deriving the steps in conversation
      is exactly how a project-specific flag gets dropped. If there isn't
      one, see **Writing a deploy script** below: the default is to write and

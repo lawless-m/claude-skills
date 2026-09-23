@@ -156,6 +156,20 @@ guessing at a procedure that hasn't been verified for it.
      assets after publish (e.g. an `.html` file), that is not evidence the
      binary was copied too — check the actual destination for every file,
      don't infer one from another.
+   - **If the overwrite is refused because the file is in use**, move the
+     live file aside and copy into the freed name; don't just fail. Windows
+     won't overwrite or delete a running exe, but it will rename one, and the
+     running process carries on from the renamed file. A CGI request in
+     flight, or a virus scanner re-reading a large exe, is enough to hold it —
+     CMS Scanner's deploy failed on exactly that on 2026-09-23. Move it into
+     `R:\Outputs\deploy-backups\<Assembly>\` as `Name.exe.inuse-<stamp>`,
+     never beside the original: `R:` is `\\rivsprod02\RI Services`, the same
+     share as `TinyWeb`, so the move is still a rename (tested with a running
+     exe, UNC path to `R:` path), and a stale exe never sits in `cgi-bin`. The
+     held file stays locked until its holder exits, so remove it at the end if
+     you can and leave it if you can't; the next run's sweep collects it.
+     Reference: `~/Git/CMS-Scanner/deploy.ps1` (`Install-File`,
+     `Remove-Held`).
 
 8. **Verify by hash**, not by "the copy command didn't error." SHA-256 of
    every deployed file (the exe and every companion file) must equal SHA-256
@@ -233,12 +247,17 @@ one project in ~130 lines. A compatible script has to:
 - **Smoke-test the real entry point and assert something specific about the
   response**, not just HTTP 200. DDBMakerCGI's script checks for the `DUCK`
   magic at offset 8 of the served database.
+- **Survive a locked destination**: overwrite, and when that is refused
+  because the file is in use, move the live file aside into the backup
+  directory and copy into its name (see step 7). Use the same routine in the
+  rollback — a request running the *new* exe locks it just as well.
 - **Roll back in a `catch`** wrapping everything from the publish onward:
   restore the backup over the artefact and hash-verify the restore landed.
 - **Call `Record-Deploy.ps1`** with the before/after hashes.
 - **Remove this run's backup only on success** — a failed run keeps it — and
   **sweep the previous run's leftovers at the start**, once this run's own
-  backup is safely taken.
+  backup is safely taken. The sweep covers held `.inuse-*` files too, one at
+  a time, skipping any that are still locked.
 
 Write it, then run it for the deploy at hand; the first real run is also the
 test of the script. Note that the destination is machine-specific

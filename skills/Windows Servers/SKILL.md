@@ -27,7 +27,7 @@ then run `Invoke-Command -Session`, then `Remove-PSSession`.
 |---|---|---|---|
 | `prod2` | RIVSPROD02 | 7.6.6 | **Production.** The profile turns the terminal text red. Confirm with the user before any change. |
 | `mis` | RIVMIS01 | 7.6.x | Usually the machine Claude runs on (check `$env:COMPUTERNAME`). Local commands run as matthew.heath; remote to it only when mh.admin rights are needed. |
-| `sis` | RIVSIS02 | 7.6.6 | Has its own profile variant, `Microsoft.PowerShell_profile-RIVSIS02.ps1` (prompt only). C: is tight (~4.9 GB free on 2026-09-25). The user's former daily dev VM; RIVMIS01 replaced it. The user logs in as mh.admin, not Matthew.Heath. `\RocsMiddleware\cust info wiki` (hourly, about 15 min per run) was moved to mh.admin with a stored password on 2026-09-25. It used to be interactive-only as Matthew.Heath. |
+| `sis` | RIVSIS02 | 7.6.6 | Has its own profile variant, `Microsoft.PowerShell_profile-RIVSIS02.ps1` (prompt only). C: was down to 4.9 GB free; 33 GB free after cleanup on 2026-09-25. The user's former daily dev VM; RIVMIS01 replaced it. The user logs in as mh.admin; the local Matthew.Heath profile was removed on 2026-09-25. `\RocsMiddleware\cust info wiki` (hourly, about 15 min per run) was moved to mh.admin with a stored password on 2026-09-25. It used to be interactive-only as Matthew.Heath. |
 
 ## Gotchas
 

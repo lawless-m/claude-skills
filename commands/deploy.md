@@ -77,6 +77,13 @@ guessing at a procedure that hasn't been verified for it.
    deploy dirty/uncommitted work anyway, that's their call, but say so
    explicitly rather than doing it silently.
 
+   **Then push the branch to origin** (`git push origin <branch>`). Running
+   `/deploy` is the instruction to push; no separate ask is needed. The
+   Chestnut dashboard links each program's version to its commit on Gitea, and
+   a commit that exists only in a local clone is a 404 there — production
+   running code origin has never seen. If the push fails (diverged, rejected),
+   stop and ask; never force.
+
 4. **Back up before touching anything** — every deployed file that's about
    to change:
    - The currently-deployed artefact.

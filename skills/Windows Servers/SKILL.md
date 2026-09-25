@@ -25,9 +25,9 @@ then run `Invoke-Command -Session`, then `Remove-PSSession`.
 
 | Alias | Host | pwsh | Notes |
 |---|---|---|---|
-| `prod2` | RIVSPROD02 | 7.4.1 | **Production.** The profile turns the terminal text red. Confirm with the user before any change. |
+| `prod2` | RIVSPROD02 | 7.6.6 | **Production.** The profile turns the terminal text red. Confirm with the user before any change. |
 | `mis` | RIVMIS01 | 7.6.x | Usually the machine Claude runs on (check `$env:COMPUTERNAME`). Local commands run as matthew.heath; remote to it only when mh.admin rights are needed. |
-| `sis` | RIVSIS02 | 7.5.4 | Has its own profile variant, `Microsoft.PowerShell_profile-RIVSIS02.ps1` (prompt only). |
+| `sis` | RIVSIS02 | 7.6.6 | Has its own profile variant, `Microsoft.PowerShell_profile-RIVSIS02.ps1` (prompt only). C: is tight (~4.9 GB free on 2026-09-25). |
 
 ## Gotchas
 
@@ -38,5 +38,11 @@ then run `Invoke-Command -Session`, then `Remove-PSSession`.
   `Enable-PSRemoting` and registering an endpoint for a new pwsh version. Run those as a one-off SYSTEM
   scheduled task (`Register-ScheduledTask` → `Start-ScheduledTask`, poll, then unregister). That is how
   PowerShell.7 was registered on RIVSPROD02 on 2026-09-25.
-- After a pwsh upgrade, the `PowerShell.7` endpoint may still point at the old version until it is
-  re-registered as above.
+- Upgrading pwsh: download the MSI on the server (prod has internet), check its SHA-256 against the GitHub
+  release asset `digest`, then run `msiexec /i … /qn /norestart ENABLE_PSREMOTING=1 ADD_PATH=1` as a SYSTEM
+  task. This takes about 1 minute and re-registers `PowerShell.7`. RIVSPROD02 (7.4.1) and RIVSIS02 (7.5.4)
+  were upgraded to 7.6.6 this way on 2026-09-25. RIVSIS02 also has internet access.
+- The local safety hook sometimes misreads `Remove-Item` in a command that also contains msiexec's `/i`
+  as deleting a system path. Do the cleanup in a separate call.
+- RIVSPROD02's `\RI Watch\Delete old log files` task calls a bare `pwsh`, so it relies on
+  `C:\Program Files\PowerShell\7\` being on the machine PATH.

@@ -27,7 +27,7 @@ then run `Invoke-Command -Session`, then `Remove-PSSession`.
 |---|---|---|---|
 | `prod2` | RIVSPROD02 | 7.6.6 | **Production.** The profile turns the terminal text red. Confirm with the user before any change. |
 | `mis` | RIVMIS01 | 7.6.x | Usually the machine Claude runs on (check `$env:COMPUTERNAME`). Local commands run as matthew.heath; remote to it only when mh.admin rights are needed. |
-| `sis` | RIVSIS02 | 7.6.6 | Has its own profile variant, `Microsoft.PowerShell_profile-RIVSIS02.ps1` (prompt only). C: is tight (~4.9 GB free on 2026-09-25). The user's former daily dev VM; RIVMIS01 replaced it. Keep the Matthew.Heath account: scheduled tasks still run as it. |
+| `sis` | RIVSIS02 | 7.6.6 | Has its own profile variant, `Microsoft.PowerShell_profile-RIVSIS02.ps1` (prompt only). C: is tight (~4.9 GB free on 2026-09-25). The user's former daily dev VM; RIVMIS01 replaced it. The user logs in as mh.admin, not Matthew.Heath. `\RocsMiddleware\cust info wiki` (hourly, about 15 min per run) was moved to mh.admin with a stored password on 2026-09-25. It used to be interactive-only as Matthew.Heath. |
 
 ## Gotchas
 
@@ -42,7 +42,8 @@ then run `Invoke-Command -Session`, then `Remove-PSSession`.
   release asset `digest`, then run `msiexec /i … /qn /norestart ENABLE_PSREMOTING=1 ADD_PATH=1` as a SYSTEM
   task. This takes about 1 minute and re-registers `PowerShell.7`. RIVSPROD02 (7.4.1) and RIVSIS02 (7.5.4)
   were upgraded to 7.6.6 this way on 2026-09-25. RIVSIS02 also has internet access.
-- The local safety hook sometimes misreads `Remove-Item` in a command that also contains msiexec's `/i`
-  as deleting a system path. Do the cleanup in a separate call.
+- The local safety hook scans any command containing `Remove-Item` and blocks it if *any* token looks like a
+  protected path: msiexec's `/i`, `/1GB`, `Get-PSDrive C`, or a variable holding a profile root. Measure in one
+  call, then delete in a separate call that contains only `Remove-Item -LiteralPath` with the full literal paths.
 - RIVSPROD02's `\RI Watch\Delete old log files` task calls a bare `pwsh`, so it relies on
   `C:\Program Files\PowerShell\7\` being on the machine PATH.

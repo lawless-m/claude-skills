@@ -107,8 +107,10 @@ each part was worth.
 - **Production tracing is not settled** (Q-3, Q-10). Tests set `CGILOG_TRACE=on`; the estate
   stays `off` until the owner answers and until the dashboard stops counting `trace_*` in a
   run's event count (Phase 6). Turning tracing on in production is not part of a conversion.
-- **No Rust tracing yet.** The Rust writer itself doesn't exist (Q-5, Phase 7); the trace
-  surface comes after it.
+- **Rust tracing exists** (Phase 7, done 2026-09-24): `log.machine("session")`, then
+  `child/transition/resource/budget` on the `TraceInstance`, mirroring the C# `Machine`. The toy
+  `rust/chestnut/src/bin/chestnut-toy.rs` with `spec/chestnut_toy.spec.json` is the worked
+  example; `tests/toy_trace.rs` runs `chestnut-verify`'s rules on its trace in-process.
 
 **Where this meets a conversion.** A logging conversion stays what §3 says — logging only.
 Instrumenting a program is separate work, and if it's wanted, the order pilot 1 established is
@@ -117,25 +119,35 @@ were visible in the trace with no spec at all. `10-tasks.md` explains why that o
 
 ## 5. Rust
 
-`logging-standard/04-library-rust.md` is the spec. Check whether the crate exists yet
-(`~/Git/Chestnut/rust/chestnut/Cargo.toml`). If it doesn't, building it is its own piece of
-work, done and tested in the Chestnut repo before any Rust program uses it. Don't write the
-format by hand inside the program. Where it should live is now an open question — Q-11 in
-`verification-standard/09-decisions-and-open-questions.md` asks whether it's a workspace in
-this repo beside `src/` or its own repo — so settle that with the user first. The trace
-surface of §4 comes after the writer, not with it. `verify/` is a separate crate and is the
-checker, not the library.
+`logging-standard/04-library-rust.md` is the spec, and the crate is built:
+`~/Git/Chestnut/rust/chestnut` (D-18: a standalone crate in the Chestnut repo, no workspace;
+`verify/` is a separate crate and is the checker, not the library). Use it; don't write the
+format by hand inside a program. The README's "Using the Rust library" has the usage.
+`cargo clippy --all-targets -- -D warnings` and `cargo nextest run` in that directory are its
+checks. Changing it means changing it there, with its tests, never a copy in the program.
 
-When building the crate:
-- **Match the C# library's events and env vars.** The spec predates the C# code, so it doesn't
-  mention `CGILOG_TRIGGER` or `CGILOG_SCHEDULE`; implement both. The events have to be
-  indistinguishable, so the cross-language conformance check in `04` is required, not optional.
+What the crate is, so it isn't relitigated:
+- **Same events and env vars as C#**, `CGILOG_TRIGGER` and `CGILOG_SCHEDULE` included.
+  `chestnut::conform` is the one schema check, and `tests/conformance.rs` compares a live Rust
+  run with the C# fixture `tests/conformance/csharp_events.jsonl`. The single shape difference
+  is the error chain: `data.error` in Rust, `data.exception` in C#.
 - **`CGILOG_ROOT` is required, with no default.** This is the one place the Rust crate
-  deliberately differs from C#: the spec and `vector/linux.md` both say so. If it's unset, fall
-  back to stderr and say why. Never quietly pick a path.
-- **Prove the concurrency test on the target host.** Port `tests/Chestnut.Stress` and run
-  several hundred processes appending on the real log root. The spec's claim about Windows
-  append mode was wrong for .NET (see the erratum in `02`), so test rather than assume.
+  deliberately differs from C#: the spec and `vector/linux.md` both say so. Unset, it logs to
+  stderr after one diagnostic line and never picks a path. `log_root()`, `log_directory()` and
+  `current_file()` return `Option`.
+- **Panics:** `install_panic_hook(&Arc<ChestnutLogger>, exit_code)` logs a `panic` event,
+  emits `run_end` with `outcome: panic`, closes the log and exits with that code. `main` still
+  returns non-zero on its own error paths.
+- **Performance:** 04's under-a-millisecond target isn't met on Windows. One append-mode file
+  open costs about 0.84 ms there, so the test asserts the C# 5 ms bound and runs alone
+  (`.config/nextest.toml`).
+- **Prove the concurrency test on the target host.** It passes on Windows with 250
+  processes; a Linux host (beast, rivsprod01) hasn't run it yet. Run `cargo nextest run
+  --test concurrency` there. It appends in the temp directory, so when the real log root is
+  on other storage (a share, a mount), spawn a few hundred `chestnut-stress <root> stress 25`
+  against that root too, before trusting it. The spec's
+  claim about Windows append mode was wrong for .NET (see the erratum in `02`), so test
+  rather than assume.
 
 ### Rust programs on Linux
 

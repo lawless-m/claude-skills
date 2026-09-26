@@ -231,6 +231,26 @@ guessing at a procedure that hasn't been verified for it.
     log in `R:\Logs\DeployDrift\` if it doesn't. `-SqliteOut` is still
     accepted and ignored, so older deploy scripts that pass it keep working.
 
+    **On Linux, also register the deploy** — recording says what happened once;
+    registering says what exists now, and it is the only way a Linux artefact
+    gets onto the drift board. `DeployDrift.ps1` cannot see a Linux filesystem,
+    so each Linux host's collector checks exactly what its deploy scripts
+    registered:
+    ```
+    sh /mnt/RIVSPROD02_RI_SERVICES/Scripts/register-deploy.sh --program <name> \
+      --repo <repo> --project <project dir> [--unit <unit>]... \
+      --artefact '<kind>|<deployed path>|[build path]|[chestnut programs]'
+    ```
+    `kind` is `linux-task`, `linux-cgi`, `linux-ext` or `html`. The deployed
+    path for .NET is the managed `.dll`, not the apphost, whose bytes do not
+    change with the code. List every systemd unit the program owns, or they show
+    as `UNREGISTERED`. Leave out the build path when the program runs from its
+    own publish output (Ratty), and `--repo`/`--project` when it is only
+    installed on this host and built elsewhere (Delilah on beast). References:
+    Ratty's and SnowPlough's `deploy.sh` on vsprod; Delilah's `deploy.ps1` runs
+    it over SSH on each Linux host. See the Deployment repo's
+    `notes/06-linux-coverage.md`.
+
     Then remove this
     run's backups from `R:\Outputs\deploy-backups\<Assembly>\` (or leave them
     briefly if the user wants a grace period). `DeployDrift.ps1`'s next run
@@ -279,7 +299,8 @@ one project in ~130 lines. A compatible script has to:
   restore the backup over the artefact and hash-verify the restore landed.
 - **Call `Record-Deploy.ps1`** (or `record-deploy.sh` on Linux) with the
   before/after hashes, and never `sqlite3` against the history file — see
-  step 11.
+  step 11. **On Linux, also call `register-deploy.sh`**, or the program never
+  reaches the drift board.
 - **Remove this run's backup only on success** — a failed run keeps it — and
   **sweep the previous run's leftovers at the start**, once this run's own
   backup is safely taken. The sweep covers held `.inuse-*` files too, one at

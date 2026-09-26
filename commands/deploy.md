@@ -210,11 +210,28 @@ guessing at a procedure that hasn't been verified for it.
 11. **Record the deploy and clean up.** Once verified, log it to the deploy
     history so there's a durable record beyond this conversation:
     ```
-    pwsh -File R:\Scripts\Record-Deploy.ps1 -SqliteOut R:\Outputs\Parquets\deploy\deploy_history.sqlite `
+    pwsh -File R:\Scripts\Record-Deploy.ps1 `
       -Assembly <name> -Project <name> -FromHash <step-2-hash> -ToHash <step-8-hash> `
       -DeployedBy <user> [-Note "..."]
     ```
-    (Source: `~/Git/Deployment/scripts/Record-Deploy.ps1`.) Then remove this
+    (Source: `~/Git/Deployment/scripts/Record-Deploy.ps1`.) On a Linux host,
+    `DEPLOY_INBOX=/mnt/RIVSPROD02_RI_SERVICES/Outputs/deploy-inbox sh
+    /mnt/RIVSPROD02_RI_SERVICES/Scripts/record-deploy.sh <assembly> <to-hash>
+    [project] [from-hash] [note]` does the same (reference:
+    `~/Git/Ratty/deploy/deploy.sh` on vsprod).
+
+    **Never write `deploy_history.sqlite` directly**, with `sqlite3` or
+    anything else. It lives on an SMB share, where SQLite's locking cannot be
+    trusted (a Linux CIFS mount fails at it outright, which is how Ratty's
+    2026-09-26 deploy went unrecorded). Both recorders only queue a JSON file
+    in `R:\Outputs\deploy-inbox\`; the `DeployDrift-Producer` task is the one
+    writer and inserts it within five minutes. So the row is not in the table
+    the moment the deploy finishes. Confirm it arrived by the file moving to
+    `deploy-inbox\done\`, and look in `deploy-inbox\failed\` plus the producer
+    log in `R:\Logs\DeployDrift\` if it doesn't. `-SqliteOut` is still
+    accepted and ignored, so older deploy scripts that pass it keep working.
+
+    Then remove this
     run's backups from `R:\Outputs\deploy-backups\<Assembly>\` (or leave them
     briefly if the user wants a grace period). `DeployDrift.ps1`'s next run
     will independently confirm the exe as `OK` (companion files aren't covered
@@ -260,7 +277,9 @@ one project in ~130 lines. A compatible script has to:
   rollback — a request running the *new* exe locks it just as well.
 - **Roll back in a `catch`** wrapping everything from the publish onward:
   restore the backup over the artefact and hash-verify the restore landed.
-- **Call `Record-Deploy.ps1`** with the before/after hashes.
+- **Call `Record-Deploy.ps1`** (or `record-deploy.sh` on Linux) with the
+  before/after hashes, and never `sqlite3` against the history file — see
+  step 11.
 - **Remove this run's backup only on success** — a failed run keeps it — and
   **sweep the previous run's leftovers at the start**, once this run's own
   backup is safely taken. The sweep covers held `.inuse-*` files too, one at

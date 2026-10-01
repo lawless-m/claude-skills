@@ -264,6 +264,33 @@ guessing at a procedure that hasn't been verified for it.
     run's leftovers once a new run has taken its own backup bounds the growth
     without ever leaving a deploy without a rollback.
 
+12. **Register the program with the Chestnut dashboard** — only for a program
+    that logs through Chestnut. The dashboard's Repo column and version links,
+    and the repo `Chestnut.Issues` files issues in, all come from
+    `~/Git/Chestnut/dashboard/chestnut-repos.json`, a flat
+    `"<chestnut program>": "<owner>/<repo>"` map. A program missing from it
+    shows `—` for its repo and its problems only raise `program_unmapped`
+    warnings. Nothing else adds the entry, so this is the step that does.
+    - The key is the **Chestnut program name** (snake_case, as in the program's
+      own log and `map/declared.json`), not the repo name: `invoice_extractor`
+      lives in `RocsMiddleware`, and `mrsflow` and `mrsflow_cgi` share
+      `MrsFlow`. A repo with several programs needs one entry each. If the name
+      isn't known, ask; don't guess it from the repo.
+    - The value is `owner/repo` from `git remote get-url origin` (for example
+      `matthew.heath/Anthea`).
+    - If the key is already there with the same value, do nothing. If it is
+      there with a *different* value, stop and say so rather than overwriting.
+    - Otherwise add it, keeping the keys alphabetical, then commit that one file
+      in `~/Git/Chestnut` on its checked-out branch (`git add
+      dashboard/chestnut-repos.json`, never `-A`; that tree carries unrelated
+      untracked files). Don't push the Chestnut repo; push only when asked. If
+      the file already has uncommitted edits, stop.
+    - **Publish it**: copy the file to `R:\TinyWeb\www\pibs\chestnut-repos.json`
+      and hash-verify the copy. That is the copy the dashboard fetches, so the
+      repo edit changes nothing until it lands. It is the same copy Chestnut's
+      own `src\Chestnut.Cgi\deploy.ps1` makes, so the next dashboard deploy
+      won't revert it.
+
 ## Writing a deploy script
 
 Once a deploy has been worked out by hand it should not need working out by
@@ -301,6 +328,8 @@ one project in ~130 lines. A compatible script has to:
   before/after hashes, and never `sqlite3` against the history file — see
   step 11. **On Linux, also call `register-deploy.sh`**, or the program never
   reaches the drift board.
+- **Register the program in `chestnut-repos.json`** if it logs through
+  Chestnut — see step 12.
 - **Remove this run's backup only on success** — a failed run keeps it — and
   **sweep the previous run's leftovers at the start**, once this run's own
   backup is safely taken. The sweep covers held `.inuse-*` files too, one at

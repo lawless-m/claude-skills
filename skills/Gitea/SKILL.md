@@ -5,10 +5,12 @@ description: Gitea issue tracker on dw.ramsden-international.com - the triage/pl
 
 # Gitea Issue Tracker
 
-The server at `https://dw.ramsden-international.com/gogs` is **Gitea 1.26.2**, upgraded from Gogs.
-The skill and its variables were renamed to match on 2026-10-09; the **`/gogs` URL path remains**,
-because that is still Gitea's configured `ROOT_URL`. Gitea API semantics apply (the same upgrade is
-why remotes need `git@`, not `gogs@`).
+The server at `https://dw.ramsden-international.com/gitea` is **Gitea 1.26.2**, upgraded from Gogs.
+The skill, its variables and the URL path were all renamed to match on 2026-10-09. The old
+**`/gogs/` path is still proxied** to the same Gitea (no redirect, so old clients and POSTs keep
+working), but `/gitea/` is canonical — it is Gitea's `ROOT_URL`, so links, assets and cookies are
+built from it. Gitea API semantics apply (the same upgrade is why remotes need `git@`, not
+`gogs@`).
 
 ## Issue workflow — labels drive the work
 
@@ -140,7 +142,7 @@ they are triage=1, plan=2, fixed=3, execute plan=4, fix failed=5.
 ## Instructions
 
 1. **Authentication**: Use the `$GITEA_TOKEN` environment variable (set in Claude settings.json). Pass it as `Authorization: token $GITEA_TOKEN` header.
-2. **Base URL**: `$GITEA_URL` is the server root `https://dw.ramsden-international.com/gogs` with **no** `/api/v1` — append it yourself, as the examples and `sweep.py` do.
+2. **Base URL**: `$GITEA_URL` is the server root `https://dw.ramsden-international.com/gitea` with **no** `/api/v1` — append it yourself, as the examples and `sweep.py` do.
 3. **Default repo**: Prefer the repo matching the working directory; otherwise `Gavin.Thompson/RI-REPO`.
 4. **Issue formatting**: Use markdown in issue bodies. Structure with `## Problem`, `## Proposed change`, `## Impact` sections where appropriate.
 5. **Don't guess issue or label numbers**: list them first.

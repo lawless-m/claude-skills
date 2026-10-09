@@ -1,13 +1,14 @@
 ---
-name: Gogs
+name: Gitea
 description: Gitea issue tracker on dw.ramsden-international.com - the triage/plan/execute plan/fixed label workflow, plus creating, querying and commenting on issues via the REST API
 ---
 
 # Gitea Issue Tracker
 
-The server at `https://dw.ramsden-international.com/gogs` is **Gitea 1.26.2** — upgraded from
-Gogs but it kept the `/gogs` URL path, the `$GOGS_*` env vars and this skill's name. Gitea API
-semantics apply (the same upgrade is why remotes need `git@`, not `gogs@`).
+The server at `https://dw.ramsden-international.com/gogs` is **Gitea 1.26.2**, upgraded from Gogs.
+The skill and its variables were renamed to match on 2026-10-09; the **`/gogs` URL path remains**,
+because that is still Gitea's configured `ROOT_URL`. Gitea API semantics apply (the same upgrade is
+why remotes need `git@`, not `gogs@`).
 
 ## Issue workflow — labels drive the work
 
@@ -53,13 +54,13 @@ comment. That only works because you post as `claude` (below), so check that bef
 
 ### The token is `claude`'s own — no `Sudo`
 
-Since 2026-10-09, `$GOGS_TOKEN` belongs to the **`claude`** account (user id 3), not Matthew's.
+Since 2026-10-09, `$GITEA_TOKEN` belongs to the **`claude`** account (user id 3), not Matthew's.
 So comments are authored `claude` by simply posting, and **`Sudo` must not be used at all** —
 the header requires a site admin and `claude` isn't one, so it fails outright.
 
 ```bash
-curl -s -X POST "$GOGS_URL/api/v1/repos/$REPO/issues/1/comments" \
-  -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
+curl -s -X POST "$GITEA_URL/api/v1/repos/$REPO/issues/1/comments" \
+  -H "Content-Type: application/json" -H "Authorization: token $GITEA_TOKEN" \
   -d @comment.json
 ```
 
@@ -95,6 +96,34 @@ last comment is `claude` is with him; leave it alone.
 
 Nothing polls this. The sweep runs when asked, or from a scheduled agent if one is ever set up.
 
+### Milestones are the unit of work
+
+Where a project has a phased plan, each phase is a **Gitea milestone** whose description carries
+the work summary and its **Done when** acceptance criteria — so the milestone is the planning
+brief, not merely a progress bar. `Ramsden-International/Boat` is the first set up this way
+(Phases 0–6, from `plan/05-build-plan.md`).
+
+`milestones.py` (next to this file) says which can be planned and whose turn each is:
+
+```bash
+PYTHONIOENCODING=utf-8 python ~/.claude/skills/Gogs/milestones.py Ramsden-International/Boat
+PYTHONIOENCODING=utf-8 python ~/.claude/skills/Gogs/milestones.py --org Ramsden-International
+```
+
+A milestone is **plannable** when it is open, every lower-id milestone is closed, and it has either
+no issue or an issue still on `triage`. Lower-id milestone still open ⇒ `BLOCKED`, because a phase
+waits on the one before it. Then the cycle per milestone:
+
+1. Raise **one issue** in that milestone, titled for the phase, body from the milestone
+   description, labelled `triage`.
+2. Plan it — the milestone description is the brief. Post the plan as a comment, relabel `plan`.
+3. Matthew sets `execute plan`; build it, drain any `tasks/` queue written for it.
+4. Gate passes → comment the commit shas, relabel `fixed`. **Matthew closes the issue**, and the
+   milestone advances. Closing is his, as always.
+
+Don't plan over a queue in flight: if `tasks/` in the working tree is non-empty, that phase is
+already being built.
+
 Working an `execute plan` issue: implement it, commit referencing the issue number, comment with
 what was done and the commit sha, and relabel → `fixed`. If it doesn't work — the plan turns out to
 be wrong, or the fix doesn't hold — relabel → `fix failed` and comment with what went wrong rather
@@ -110,8 +139,8 @@ they are triage=1, plan=2, fixed=3, execute plan=4, fix failed=5.
 
 ## Instructions
 
-1. **Authentication**: Use the `$GOGS_TOKEN` environment variable (set in Claude settings.json). Pass it as `Authorization: token $GOGS_TOKEN` header.
-2. **Base URL**: `$GOGS_URL` is the server root `https://dw.ramsden-international.com/gogs` with **no** `/api/v1` — append it yourself, as the examples and `sweep.py` do.
+1. **Authentication**: Use the `$GITEA_TOKEN` environment variable (set in Claude settings.json). Pass it as `Authorization: token $GITEA_TOKEN` header.
+2. **Base URL**: `$GITEA_URL` is the server root `https://dw.ramsden-international.com/gogs` with **no** `/api/v1` — append it yourself, as the examples and `sweep.py` do.
 3. **Default repo**: Prefer the repo matching the working directory; otherwise `Gavin.Thompson/RI-REPO`.
 4. **Issue formatting**: Use markdown in issue bodies. Structure with `## Problem`, `## Proposed change`, `## Impact` sections where appropriate.
 5. **Don't guess issue or label numbers**: list them first.
@@ -122,8 +151,8 @@ they are triage=1, plan=2, fixed=3, execute plan=4, fix failed=5.
 
 ### Example 1: List open issues with their labels
 ```bash
-curl -s "$GOGS_URL/api/v1/repos/Ramsden-International/CagesWaitrose/issues?state=open" \
-  -H "Authorization: token $GOGS_TOKEN" | PYTHONIOENCODING=utf-8 python -c "
+curl -s "$GITEA_URL/api/v1/repos/Ramsden-International/CagesWaitrose/issues?state=open" \
+  -H "Authorization: token $GITEA_TOKEN" | PYTHONIOENCODING=utf-8 python -c "
 import json,sys
 for i in json.load(sys.stdin):
     print('#%s [%s] %s' % (i['number'], ','.join(l['name'] for l in i.get('labels') or []), i['title']))
@@ -133,34 +162,34 @@ for i in json.load(sys.stdin):
 ### Example 2: Post a plan, then move triage → plan
 ```bash
 # 1. the plan comment (body in a file — it will be long)
-curl -s -X POST "$GOGS_URL/api/v1/repos/Ramsden-International/CagesWaitrose/issues/1/comments" \
-  -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
+curl -s -X POST "$GITEA_URL/api/v1/repos/Ramsden-International/CagesWaitrose/issues/1/comments" \
+  -H "Content-Type: application/json" -H "Authorization: token $GITEA_TOKEN" \
   -d @plan.json
 
 # 2. PUT replaces the whole label set, so pass the full desired set
-curl -s -X PUT "$GOGS_URL/api/v1/repos/Ramsden-International/CagesWaitrose/issues/1/labels" \
-  -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
+curl -s -X PUT "$GITEA_URL/api/v1/repos/Ramsden-International/CagesWaitrose/issues/1/labels" \
+  -H "Content-Type: application/json" -H "Authorization: token $GITEA_TOKEN" \
   -d '{"labels":[2]}'
 ```
 
 ### Example 3: Create an issue
 ```bash
-curl -s -X POST "$GOGS_URL/api/v1/repos/Gavin.Thompson/RI-REPO/issues" \
-  -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
+curl -s -X POST "$GITEA_URL/api/v1/repos/Gavin.Thompson/RI-REPO/issues" \
+  -H "Content-Type: application/json" -H "Authorization: token $GITEA_TOKEN" \
   -d '{"title": "Fix broken login page", "body": "## Problem\n\n...", "labels": [1]}'
 ```
 
 ### Example 4: Close an issue
 ```bash
-curl -s -X PATCH "$GOGS_URL/api/v1/repos/Gavin.Thompson/RI-REPO/issues/5" \
-  -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
+curl -s -X PATCH "$GITEA_URL/api/v1/repos/Gavin.Thompson/RI-REPO/issues/5" \
+  -H "Content-Type: application/json" -H "Authorization: token $GITEA_TOKEN" \
   -d '{"state": "closed"}'
 ```
 
 ### Example 5: Add a comment
 ```bash
-curl -s -X POST "$GOGS_URL/api/v1/repos/Gavin.Thompson/RI-REPO/issues/3/comments" \
-  -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
+curl -s -X POST "$GITEA_URL/api/v1/repos/Gavin.Thompson/RI-REPO/issues/3/comments" \
+  -H "Content-Type: application/json" -H "Authorization: token $GITEA_TOKEN" \
   -d '{"body": "Fix deployed to production."}'
 ```
 
@@ -170,9 +199,9 @@ curl -s -X POST "$GOGS_URL/api/v1/repos/Gavin.Thompson/RI-REPO/issues/3/comments
 
 ## Authentication
 
-Token is available as the `$GOGS_TOKEN` environment variable, configured in `~/.claude/settings.json` under `env`. The base URL is `$GOGS_URL`.
+Token is available as the `$GITEA_TOKEN` environment variable, configured in `~/.claude/settings.json` under `env`. The base URL is `$GITEA_URL`.
 
-In curl commands, reference them directly: `$GOGS_TOKEN` and `$GOGS_URL`.
+In curl commands, reference them directly: `$GITEA_TOKEN` and `$GITEA_URL`.
 
 ## Common Endpoints
 
@@ -202,7 +231,7 @@ differ (issue `#2` came back with `"id": 17`).
 The old Gogs build 404'd on `/pulls`; **Gitea 1.26 serves it** — `GET /repos/:owner/:repo/pulls`
 returns 200. Creating one via `POST /pulls` has not been exercised here, so if it fails, fall back
 to pushing the branch and handing over the compare URL:
-`$GOGS_URL/<owner>/<repo>/compare/master...<branch>`.
+`$GITEA_URL/<owner>/<repo>/compare/master...<branch>`.
 
 ## Create Issue Body
 

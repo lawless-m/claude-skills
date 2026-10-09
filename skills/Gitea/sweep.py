@@ -1,14 +1,20 @@
 """Gitea sweep: what is mine to action, on any repo. Usage: sweep.py <owner>/<repo>"""
 import json, os, sys, urllib.request
 
-REPO = sys.argv[1] if len(sys.argv) > 1 else "matthew.heath/CagesWaitrose"
-BASE = os.environ["GOGS_URL"] + "/api/v1/repos/" + REPO
-ME = "claude"   # the account Claude posts as, via the Sudo header
+
+def env(key):
+    """GITEA_* since 2026-10-09; GOGS_* kept as fallback for machines not yet updated."""
+    return os.environ.get("GITEA_" + key) or os.environ["GOGS_" + key]
+
+
+REPO = sys.argv[1] if len(sys.argv) > 1 else "Ramsden-International/CagesWaitrose"
+BASE = env("URL") + "/api/v1/repos/" + REPO
+ME = "claude"   # the account Claude posts as — its own token now, no Sudo
 
 
 def get(path):
     r = urllib.request.Request(BASE + path,
-                               headers={"Authorization": "token " + os.environ["GOGS_TOKEN"]})
+                               headers={"Authorization": "token " + env("TOKEN")})
     return json.load(urllib.request.urlopen(r))
 
 

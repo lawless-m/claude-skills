@@ -67,10 +67,12 @@ curl -s -X POST "$GOGS_URL/api/v1/repos/$REPO/issues/1/comments" \
 Verify with the response's `user.login`, which should read `claude`. Authorship cannot be changed
 after the fact, so get it right on the first post.
 
-**Exception — label changes must NOT use `Sudo`.** `claude` can comment (read access is enough) but
-is not a repo collaborator, so a label write as `claude` returns **403**. Send label changes as
-Matthew, without the header. That costs nothing: turn detection reads comment authors, not who
-moved a label. If `claude` is ever added as a collaborator, drop this exception.
+**Label changes: try `Sudo` first, fall back on 403.** A label write needs write access on the
+repo, which `claude` only has where he's been added as a collaborator (`matthew.heath/Boat`, since
+2026-10-09; not everywhere). So send label changes with `-H "Sudo: claude"` like any other write,
+and if the reply is **403**, repeat the call without the header — it then goes as Matthew, who owns
+the repo, and succeeds. That fallback costs nothing: turn detection reads comment authors, not who
+moved a label.
 
 ### Sweeping for what's yours
 

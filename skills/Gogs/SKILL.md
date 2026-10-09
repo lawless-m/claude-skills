@@ -51,28 +51,34 @@ Matthew is happy with it, and only he moves it.
 Whose turn it is on a `plan` issue is therefore **not** in the label — it's the author of the last
 comment. That only works because you post as `claude` (below), so check that before relying on it.
 
-### Post as `claude`, not as Matthew
+### The token is `claude`'s own — no `Sudo`
 
-`$GOGS_TOKEN` is Matthew's account and he is a site admin, so **every write must carry
-`-H "Sudo: claude"`** — comments, label changes, issue edits. Without it your comments are authored
-`matthew.heath` and the issue history reads as him talking to himself, which also destroys the
-turn-detection above. Reads don't need it.
+Since 2026-10-09, `$GOGS_TOKEN` belongs to the **`claude`** account (user id 3), not Matthew's.
+So comments are authored `claude` by simply posting, and **`Sudo` must not be used at all** —
+the header requires a site admin and `claude` isn't one, so it fails outright.
 
 ```bash
 curl -s -X POST "$GOGS_URL/api/v1/repos/$REPO/issues/1/comments" \
   -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
-  -H "Sudo: claude" -d @comment.json
+  -d @comment.json
 ```
 
 Verify with the response's `user.login`, which should read `claude`. Authorship cannot be changed
 after the fact, so get it right on the first post.
 
-**Label changes: try `Sudo` first, fall back on 403.** A label write needs write access on the
-repo, which `claude` only has where he's been added as a collaborator (`matthew.heath/Boat`, since
-2026-10-09; not everywhere). So send label changes with `-H "Sudo: claude"` like any other write,
-and if the reply is **403**, repeat the call without the header — it then goes as Matthew, who owns
-the repo, and succeeds. That fallback costs nothing: turn detection reads comment authors, not who
-moved a label.
+**Where writes work.** `claude` is in the `Claude` team of the **`Ramsden-International`**
+organisation with Admin on all repositories, so issues, comments, labels and milestones all work on
+every repo there, including ones created later. He also has push on a handful of Matthew's personal
+repos (CGI-Sharp, CSharp-Lib, ProductImageCopier, ReproSharepointer, RocsMiddleware, Roobarb).
+On the ~30 other personal repos he has **pull only**: comments post fine, but a **label change
+returns 403 and there is no fallback**, because Matthew's token is no longer configured. When that
+happens, say so and ask him either to move the label by hand, add `claude` as a collaborator, or
+transfer the repo into the organisation; don't retry.
+
+The scopes on the token are `write:issue`, `write:repository` and `read:user`. A 403 mentioning
+scope rather than permission means it wants widening — minted with
+`gitea admin user generate-access-token` on RIVSPROD01, where Gitea runs as `git` with config
+`/opt/gitea/custom/conf/app.ini`.
 
 ### Sweeping for what's yours
 
@@ -80,7 +86,7 @@ moved a label.
 labels plus the last-comment author:
 
 ```bash
-PYTHONIOENCODING=utf-8 python ~/.claude/skills/Gogs/sweep.py matthew.heath/CagesWaitrose
+PYTHONIOENCODING=utf-8 python ~/.claude/skills/Gogs/sweep.py Ramsden-International/CagesWaitrose
 ```
 
 Yours are `triage` (plan it), `execute plan` (build it), `fix failed` (re-plan it), and any `plan`
@@ -99,13 +105,13 @@ call.
 fails in real use. Treat that like a fresh `triage` — re-investigate given what the failure now
 tells you, post a revised plan, and set it back to `plan` for review.
 
-Label ids are per-repo, so **list them first, never hardcode**. On `matthew.heath/CagesWaitrose`
+Label ids are per-repo, so **list them first, never hardcode**. On `Ramsden-International/CagesWaitrose`
 they are triage=1, plan=2, fixed=3, execute plan=4, fix failed=5.
 
 ## Instructions
 
 1. **Authentication**: Use the `$GOGS_TOKEN` environment variable (set in Claude settings.json). Pass it as `Authorization: token $GOGS_TOKEN` header.
-2. **Base URL**: Use `$GOGS_URL/api/v1` (defaults to `https://dw.ramsden-international.com/gogs/api/v1`).
+2. **Base URL**: `$GOGS_URL` is the server root `https://dw.ramsden-international.com/gogs` with **no** `/api/v1` — append it yourself, as the examples and `sweep.py` do.
 3. **Default repo**: Prefer the repo matching the working directory; otherwise `Gavin.Thompson/RI-REPO`.
 4. **Issue formatting**: Use markdown in issue bodies. Structure with `## Problem`, `## Proposed change`, `## Impact` sections where appropriate.
 5. **Don't guess issue or label numbers**: list them first.
@@ -116,7 +122,7 @@ they are triage=1, plan=2, fixed=3, execute plan=4, fix failed=5.
 
 ### Example 1: List open issues with their labels
 ```bash
-curl -s "$GOGS_URL/api/v1/repos/matthew.heath/CagesWaitrose/issues?state=open" \
+curl -s "$GOGS_URL/api/v1/repos/Ramsden-International/CagesWaitrose/issues?state=open" \
   -H "Authorization: token $GOGS_TOKEN" | PYTHONIOENCODING=utf-8 python -c "
 import json,sys
 for i in json.load(sys.stdin):
@@ -127,12 +133,12 @@ for i in json.load(sys.stdin):
 ### Example 2: Post a plan, then move triage → plan
 ```bash
 # 1. the plan comment (body in a file — it will be long)
-curl -s -X POST "$GOGS_URL/api/v1/repos/matthew.heath/CagesWaitrose/issues/1/comments" \
+curl -s -X POST "$GOGS_URL/api/v1/repos/Ramsden-International/CagesWaitrose/issues/1/comments" \
   -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
   -d @plan.json
 
 # 2. PUT replaces the whole label set, so pass the full desired set
-curl -s -X PUT "$GOGS_URL/api/v1/repos/matthew.heath/CagesWaitrose/issues/1/labels" \
+curl -s -X PUT "$GOGS_URL/api/v1/repos/Ramsden-International/CagesWaitrose/issues/1/labels" \
   -H "Content-Type: application/json" -H "Authorization: token $GOGS_TOKEN" \
   -d '{"labels":[2]}'
 ```

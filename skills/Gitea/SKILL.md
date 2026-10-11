@@ -139,6 +139,43 @@ tells you, post a revised plan, and set it back to `plan` for review.
 Label ids are per-repo, so **list them first, never hardcode**. On `Ramsden-International/CagesWaitrose`
 they are triage=1, plan=2, fixed=3, execute plan=4, fix failed=5.
 
+## Airlock
+
+Projects planned in claude.ai chat now arrive by themselves, through **Airlock** into
+`Ramsden-International`. The old route — zip the files, pass them through GitHub, clone and shift
+the remote — is retired. Nothing polls: an arrival is just a new repo the next sweep sees.
+
+What lands is a private repo carrying its git history, the five workflow labels, its milestones in
+phase order (ids ascend, so `milestones.py` reads the phases correctly), one issue on `triage` in
+the first milestone, Actions **off**, and `AIRLOCK.json` kept at the root as provenance. The repo
+description ends in a marker line:
+
+```
+airlock: inbox/<staged-name> @ <40-hex-sha>
+```
+
+That is how the internal copy is tied to what was staged. No per-repo setup is needed — the
+`Claude` team covers every repo in the org — so
+
+```bash
+PYTHONIOENCODING=utf-8 python ~/.claude/skills/Gitea/milestones.py --org Ramsden-International
+```
+
+lists an arrival on its next run with nothing configured.
+
+**Authorship does not survive the crossing.** The build plan says migrated issues show "originally
+by chat"; the verified behaviour (Phase 0 Q4 in `Ramsden-International/Airlock`,
+`airlock/plan/10-open-questions.md`, confirmed on the Phase 3 real run) is that **every** migrated issue and
+comment is authored by the importing account, `airlock`, bodies unchanged — Gitea rewrites the
+author on migration and keeps no record of the original. `submitted_by` in `AIRLOCK.json` is the only record of who submitted it. So the
+last-comment-author rule above would read a migrated comment as "airlock replied" — harmless on a
+fresh arrival, where the `triage` label decides whose turn it is, but worth knowing before trusting
+an author name on a repo that came through Airlock.
+
+Did it land? The receipts are on the **staging** side, issue #1 of `inbox/airlock-log`: one
+`migrated …` comment per success, `failed …` with a reason otherwise. Anything refused stays in
+staging and is reported, never half-migrated.
+
 ## Instructions
 
 1. **Authentication**: Use the `$GITEA_TOKEN` environment variable (set in Claude settings.json). Pass it as `Authorization: token $GITEA_TOKEN` header.

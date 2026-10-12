@@ -31,8 +31,19 @@ dependencies (`GET /repos/<repo>/issues/<index>/dependencies`) are what `blocked
    `state=open` labelled `rock`, lowest number first. None → `rocks: nothing to carry — run /crush`
    and stop.
 2. **Pick** the lowest-numbered open rock whose every dependency is **closed**. If none:
-   - no open rocks → `rocks: milestone <title> cleared — <n> carried`; report the gate's result and
-     stop. **Do not close the milestone** — that is the user's, and it is what advances the phase.
+   - no open rocks → the stone is crushed. Every rock is closed, so none halted and the gate rock
+     passed. Re-read the milestone's issues from the API to confirm that `open_issues` is 0, and
+     that the gate (the highest-numbered rock) is closed with a passing comment. Then:
+     1. **Close the milestone**: `PATCH /repos/<repo>/milestones/<id>` with `{"state": "closed"}`.
+        Print `rocks: milestone <title> cleared and closed — <n> carried`, with the gate's result.
+     2. **Crush the next stone**: invoke the `crush` skill, which picks the next earliest open
+        milestone. Report what it created, then stop. Starting the next milestone's rocks is a fresh
+        `/rocks`, so each phase begins from a clean read of its own queue.
+     3. If no open milestones remain, `/crush` says so. Print `rocks: all stones crushed — project
+        plan complete` and stop.
+
+     If anything is still open (a halted rock, or the gate not closed), the milestone stays open
+     and `/crush` does not run. That is the stalled or halted case below, never a clear.
    - rocks remain but all blocked → `rocks: stalled — #<n> blocked by #<ids>` and stop.
    - a rock whose **last comment begins `halted:`** is skipped, not retried (see below).
 3. **Read only that issue.** Announce: `rocks: starting #<n> — <title>`.
@@ -69,4 +80,5 @@ describe it afterwards as though it were a rule.
 
 Announce each rock as it starts, so a long run is followable as it happens.
 
-Never close a rock to keep a run going, and never report a partial drain as a full one.
+Never close a rock to keep a run going, and never report a partial drain as a full one. Above all,
+never close a milestone that still has an open rock: closing it is what lets the next phase start.

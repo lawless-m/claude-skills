@@ -77,6 +77,17 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ---
 
+## Temporary files: use the project's own ./tmp
+
+- Scratch and working files go in a `tmp/` folder inside the current project (`./tmp`), not in the
+  session scratchpad under `/tmp/claude-*` or `%TEMP%`.
+- If `./tmp` doesn't exist, create it.
+- The scratchpad's location is hardcoded and can't be moved, so choosing `./tmp` is a habit to
+  keep, not a setting. This overrides Claude Code's default of using the session scratchpad.
+- If the project is under version control, `tmp/` should be git-ignored.
+
+---
+
 ## Preferred CLI Tools
 
 Our dev hosts have modern CLI tools installed — prefer them in shell commands. (If one is missing on this host, say so; install via cargo-binstall / dotnet tool / apt as appropriate.)

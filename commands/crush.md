@@ -31,9 +31,14 @@ Read the `Gitea` skill for auth (`$GITEA_TOKEN` is the `claude` account; no `Sud
    rather than a whole queue.
 
 4. **Spawn the planner**: `Agent` with `subagent_type: "general-purpose"`, `model: "fable"`,
-   prompt = the brief plus the rules below verbatim. The planner returns rock *specs*; you create
-   the issues. Keep your part mechanical: copy each `description` exactly as written — the planner
-   read the code, you did not.
+   prompt = the brief plus the rules below verbatim, with `<ROCKS_FILE>` replaced by the absolute
+   path of `tmp/rocks.json` in the repo. Create `tmp/` if missing and delete any old
+   `tmp/rocks.json` first, so a stale file cannot pass for this run's plan. The planner writes rock
+   *specs* to that file; you create the issues. **Read the specs from the file with a script, never
+   retype them from the agent's reply**: the completion notice HTML-escapes the text (`&&` arrives
+   as `&amp;&amp;`), and on Windows the agent's output file stays empty. If the file is missing or
+   won't parse, stop and say so rather than rebuilding it by hand. Keep your part mechanical: copy
+   each `description` exactly as written — the planner read the code, you did not.
 
 5. **Create one issue per rock**, in array order:
    `POST /repos/<repo>/issues` with `{"title": ..., "body": ..., "milestone": <id>,
@@ -42,7 +47,8 @@ Read the `Gitea` skill for auth (`$GITEA_TOKEN` is the `claude` account; no `Sud
    final line `**Verify:** <command>`.
 
 6. **Wire real dependencies only**: for each `blockedBy`, `POST /repos/<repo>/issues/<index>/dependencies`
-   with `{"index": <blocking issue number>}`. Plain ordering needs no dependency — issue numbers
+   with `{"index": <blocking issue number>, "owner": <owner>, "repo": <repo name>}` (without
+   `owner` and `repo`, Gitea returns 404). Plain ordering needs no dependency — issue numbers
    already carry it.
 
 7. **Verify the queue before handing it over.** Re-read the created rocks from the API: every one
@@ -51,16 +57,20 @@ Read the `Gitea` skill for auth (`$GITEA_TOKEN` is the `claude` account; no `Sud
    that cannot end. Then:
    `crush: <n> rocks on <milestone>. Gate: #<last> — <check>. Run: /rocks`
 
-If the planner returned a question instead of rocks, put it to the user and stop. Create nothing.
+If `tmp/rocks.json` holds a question instead of rocks, put it to the user and stop. Create nothing.
 
 ## Planning rules (include verbatim in the agent prompt)
 
-You have no task-list tools and you create nothing. Your final output IS the rock list, as JSON and
-nothing else — no preamble, no commentary:
+You have no task-list tools and you create nothing except one file: write the rock list as JSON
+to `<ROCKS_FILE>` with the Write tool, UTF-8, the JSON and nothing else (no code fence, no
+commentary):
 
 ```json
 [{"subject": "...", "description": "...", "verify": "...", "blockedBy": []}]
 ```
+
+Your final reply is just `rocks: <n> written to <ROCKS_FILE>`. A question also goes into the file,
+as `{"question": "..."}`, and your reply is the question.
 
 - Array order is execution order. Use `blockedBy` (0-based indices into this array) only for real
   dependencies; plain ordering is already implied.
@@ -77,4 +87,4 @@ nothing else — no preamble, no commentary:
 - The last rock is the **end-to-end gate**: the check you'd use to call the whole stone done,
   taken from its acceptance criteria. A finite list with a real final check is what makes the
   drain provably end.
-- Nothing speculative. If the brief is ambiguous, return no rocks — return `{"question": "..."}`.
+- Nothing speculative. If the brief is ambiguous, write no rocks — write `{"question": "..."}`.

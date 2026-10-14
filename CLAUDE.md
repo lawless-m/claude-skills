@@ -77,6 +77,16 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ---
 
+## Secrets: never put them in the chat
+
+- Never print a password, key or connection string into tool input or output. That means no
+  `cat` of appsettings.json, .env, config JSON etc. -- redact when looking:
+  `sed -E 's/(Password|Pwd|Secret|Key)=[^;"]*/\1=***/Ig'` or `jq 'walk(if type=="object" then with_entries(if (.key|test("pass|pwd|secret|key";"i")) then .value="***" else . end) else . end)'`.
+- When a command needs a credential, have it read the value at runtime (env var, the deployed
+  config, KeePass) instead of writing it inline into the command or a scratch file.
+
+---
+
 ## Temporary files: use the project's own ./tmp
 
 - Scratch and working files go in a `tmp/` folder inside the current project (`./tmp`), not in the

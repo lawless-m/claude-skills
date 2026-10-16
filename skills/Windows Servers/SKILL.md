@@ -1,12 +1,12 @@
 ---
 name: Windows Servers
-description: Use when running commands on RI's Windows servers RIVSPROD02 (prod), RIVMIS01, RIVSIS02, RIVMDEV01, RIVSEM04 or RIVSEM01 (Exportmaster prod) — remote PowerShell as mh.admin, or when the user says "on prod2", "on sis", "on mis", "on dev01", "on sem04", "on sem01".
+description: Use when running commands on RI's Windows servers RIVSPROD02 (prod), RIVMIS01, RIVSIS02, RIVMDEV01, RIVSEM04, RIVSEM01 (Exportmaster prod) or RIVSINDEX01 — remote PowerShell as mh.admin, or when the user says "on prod2", "on sis", "on mis", "on dev01", "on sem04", "on sem01", "on index01".
 ---
 
 # Windows Servers (PowerShell remoting)
 
 The user's profile (`$PROFILE`, OneDrive `Documents\PowerShell\Microsoft.PowerShell_profile.ps1`) defines
-interactive shortcuts: `sis` → RIVSIS02, `mis` → RIVMIS01, `dev01` → RIVMDEV01, `sem04` → RIVSEM04, `sem01` → RIVSEM01, `prod2` → RIVSPROD02. They use
+interactive shortcuts: `sis` → RIVSIS02, `mis` → RIVMIS01, `dev01` → RIVMDEV01, `sem04` → RIVSEM04, `sem01` → RIVSEM01, `index01` → RIVSINDEX01, `prod2` → RIVSPROD02. They use
 `Enter-PSSession`, which is interactive; **it does not work from Claude's tool calls**. Use `Invoke-Command`
 with the same credential and the pwsh 7 endpoint:
 
@@ -31,6 +31,7 @@ then run `Invoke-Command -Session`, then `Remove-PSSession`.
 | `dev01` | RIVMDEV01 | 7.6.6 | Dev box, 192.168.102.28. WinRM was broken on 2026-10-03: the 5985 listener was down, then every session failed with "WSMan service could not launch a host process" until `Enable-PSRemoting -Force` was run locally. Only the 5.1 endpoint existed until pwsh 7.6.6 was installed from the share the same day. Has internet. About 11 GB free on C: then. |
 | `sem01` | RIVSEM01 | 7.6.6 | 192.168.102.2. **Production: the Exportmaster machine.** The profile alias turns the terminal text red. Confirm with the user before any change. Windows Server 2012 R2 (6.3.9600), so its default `powershell.exe` is **4.0**: no `&&`, ternary or `??`. **Weekly reboot on Sunday about 05:00.** Had no `PowerShell.7` endpoint; pwsh 7.6.6 was installed side by side from the share on 2026-10-03 (about 30 s, no reboot, `powershell.exe` untouched). .NET 8/9/10 list 2012 R2 as supported only with ESU, so 7.6 here is "should work", not an explicit Microsoft statement. WMF 5.1 was deliberately not installed (replaces 4.0 in place and needs a reboot). The mh.admin session cannot read `\\rivsts05` (double hop); the SYSTEM task can. 18 GB free on C: then. |
 | `sem04` | RIVSEM04 | 7.6.6 | 192.168.102.240. Remoting worked first time on both endpoints (checked 2026-10-03), no repair needed. Upgraded from 7.5.4 to 7.6.6 from the share on 2026-10-03. Only about 7.9 GB free on C: then. |
+| `index01` | RIVSINDEX01 | 7.6.6 | 192.168.102.42. Windows Server 2012 R2 Datacenter (6.3.9600), so its default `powershell.exe` is **4.0**. WinRM on 5985 worked first time as mh.admin. Had no `PowerShell.7` endpoint; pwsh 7.6.6 was installed side by side from the share on 2026-10-16 via the SYSTEM-task route (msiexec took about 33 s, no reboot, exit 0; expect one "I/O operation aborted" while polling). The same 2012 R2 ESU caveat as RIVSEM01 applies. 24 GB free on C: then. |
 
 ## Gotchas
 

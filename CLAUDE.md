@@ -98,6 +98,17 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ---
 
+## Windows: no backslashes in Bash tool commands
+
+- On Windows hosts the Bash tool collapses `\\` to `\` before Git Bash sees the command. Quoting doesn't help:
+  quoted heredocs (`<<'EOF'`), `python -c`, `printf` and `sed` all get the damaged text.
+- So any code or text containing a backslash (Windows paths, regexes, `\r\n`, escapes, Python or PowerShell
+  scripts) is written to a file in `./tmp` with the Write tool and then run from there. Changes to existing files
+  go through Edit, never inline sed or a typed-in replace script.
+- Don't narrate the collapse when it happens; don't trigger it.
+
+---
+
 ## Preferred CLI Tools
 
 Our dev hosts have modern CLI tools installed — prefer them in shell commands. (If one is missing on this host, say so; install via cargo-binstall / dotnet tool / apt as appropriate.)

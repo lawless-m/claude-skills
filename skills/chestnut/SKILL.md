@@ -32,16 +32,19 @@ The repo is the source of truth; this skill only points into it.
 - `logging-standard/01-log-event-schema.md` — the event contract, kept to hand.
 - `verification-standard/CONTENTS.md` — the tracing and verification set, if the job touches
   it (§4 below).
-- `conversions/elastifetch-survey.md` — the reference conversion (scheduled task, M.E.Logging
-  adapter, deploy, first-run verification). `conversions/x3_4gl-survey.md` is a second one
-  (a generic tool whose schedule comes from `CGILOG_SCHEDULE` set by the calling .bat).
+- `~/Git/ElastiCompare/chestnut-survey.md` — the reference conversion (scheduled task,
+  M.E.Logging adapter, deploy, first-run verification). `~/Git/X3Bot/src/X3.Cli/chestnut-survey.md`
+  is a second one (a generic tool whose schedule comes from `CGILOG_SCHEDULE` set by the calling .bat).
 
 ## 3. Conventions established so far
 
 - **One program per session.** Scope is logging only: no behaviour changes, no refactors.
   Things that look wrong go in the survey's observations, not the diff.
-- The survey is written to `~/Git/Chestnut/conversions/<program>-survey.md` **before** the
-  program's code changes. It stays in the Chestnut repo, not the program's repo.
+- The survey is written to `chestnut-survey.md` beside the program's `.csproj` or `Cargo.toml`,
+  in the program's own repo, **before** the program's code changes. It is committed there with
+  the program, not in Chestnut. Only a program with no local source (a wrapped jar, a repo that
+  exists only on a Linux host) keeps `~/Git/Chestnut/conversions/<program>-survey.md`.
+  `chestnut-map declared ~/Git map/declared.json` collects both kinds into the estate map.
 - `program` is lower snake case and becomes the log directory name (`x3_4gl`).
 - Reference the library from the program's csproj, with the comment the others carry:
   ```xml
@@ -229,9 +232,9 @@ Consumers use a path dependency, the Rust equivalent of the C# `ProjectReference
 The playbook is about converting existing programs. A new program has no baseline, so skip the
 survey and baseline steps. Everything else still applies from the first commit: initialise
 first, `run_start`, `run_end` on every exit path, the panic/exception handler, the smoke-run
-env, and confirming the first scheduled run. Still add a short
-`conversions/<program>-survey.md` recording the program name, trigger, schedule, host and
-deploy, so the estate stays listed in one place.
+env, and confirming the first scheduled run. Still add a short `chestnut-survey.md` beside
+the build file recording the program name, trigger, schedule, host and deploy, with its
+estate-map block, so the program shows up on the estate map.
 
 ## Not this
 

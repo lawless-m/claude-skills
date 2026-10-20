@@ -15,7 +15,7 @@ Base URL: `https://dw.ramsden-international.com/devolver` — no auth, plain `cu
 
 | GET | Params | Returns |
 |---|---|---|
-| `/api/search` | `q` (required), `scope`, `days`, `limit` (default 50) | `[{machine, project, session_id, timestamp, entry_type, snippet, query}]` |
+| `/api/search` | `q` (required), `scope`, `days`, `project`, `machine`, `sort=relevance`, `limit` (default 50) | `[{machine, project, session_id, timestamp, entry_type, snippet}]`, newest first unless `sort=relevance` |
 | `/api/session` | `machine`, `project`, `session` (full session_id) | the stored transcript (below) |
 | `/api/sessions` | `days` (default 30) | `[{machine, project, project_dir, session_id, last_activity, title}]` |
 
@@ -29,11 +29,13 @@ e.g. `jq -r '.conversation[] | select(.type=="user") | .content'`.
 
 ## Gotchas
 
-- **Search is one case-insensitive substring**, not words or regex. `q=jwt auth` only matches that
-  exact phrase. Search for the most distinctive single term, then read the session.
-- **`limit` caps before sorting.** Files are scanned in directory order and scanning stops at
-  `limit` hits, so a common term can return 50 old hits and miss last week's. Narrow with `days`
-  or a rarer term rather than trusting the top result is the newest.
+- **Search is full-text on whole words** (SQLite FTS5), case-insensitive. Every word must appear in
+  the same entry, any order; `"pull and deploy"` is an exact phrase; `deploy*` is a prefix.
+  Punctuation is a word break, so `github-lawless` = the phrase "github lawless". No substring
+  matching: `deploy` won't find "deployment" — use `deploy*`.
+- Hits are individual entries, so one session can fill many slots — filter by `project`/`days`
+  or use `sort=relevance` when a common term floods the results. `project`/`machine` filters
+  are case-insensitive exact names.
 - `project` is the last path component of the session's working dir (`C:\Sprout\Devolver` →
   `Devolver`), so same-named folders on different hosts share a project name; `machine` tells
   them apart. Case varies by host (`RIVMIS01`, `RIVSPROD01`, `beast`) — copy it from a search

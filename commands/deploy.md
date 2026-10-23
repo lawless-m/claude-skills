@@ -7,11 +7,19 @@ assumed.
 **Why this exists**: Translation ran a Feb 5 binary for five months after its
 fix was committed — `dotnet publish` was run, but the built exe was never
 copied to `cgi-bin`. No error, no log line, no alert; the app just quietly got
-slower every day. See the `Deployment` repo (`~/Git/Deployment`,
+slower every day. See the `Deployment` repo
+([Ramsden-International/Deployment](https://dw.ramsden-international.com/gitea/Ramsden-International/Deployment),
 `notes/01-the-problem.md`) for the full post-mortem this procedure is drawn
 from. `DeployDrift.ps1` in that repo (deployed at `\\rivsprod02\RI Services\Scripts\DeployDrift.ps1`)
 is the read-only detector for this failure mode; this command is the
 procedure for deploying without causing it.
+
+**Where repos are.** Gitea (`https://dw.ramsden-international.com/gitea/<owner>/<repo>`) is the
+source of truth, and the only place a repo is guaranteed to exist: checkouts are made per
+change and thrown away. While one is open in Sprout it is `C:\Sprout\<Repo>` on RIVMIS01,
+shared read-only to everyone as `\\rivmis01\Sprout\<Repo>`. The references below name the
+Gitea repo; read them there, or in the share if a checkout happens to be open. There is no
+`~/Git` any more.
 
 **Scope**: a `dotnet publish` or `cargo build --release` output copied (by
 hand or already in place) into `cgi-bin` or run from a share. Windows
@@ -39,8 +47,8 @@ guessing at a procedure that hasn't been verified for it.
      `cargo metadata --no-deps --manifest-path <path>` — it gives the real
      bin target name and `target_directory` (a workspace's members share one
      at the workspace root, e.g. MrsFlow's crates all build into
-     `~/Git/MrsFlow/target`; a standalone `[workspace]` crate like Pintail
-     has its own, e.g. `~/Git/Pintail/pintail-cgi/target`). Don't guess the
+     `<checkout>/target`; a standalone `[workspace]` crate like Pintail
+     has its own, e.g. `<checkout>/pintail-cgi/target`). Don't guess the
      layout — ask cargo. **Unlike .NET, there is no `<PublishDir>` shortcut
      that can point straight at `cgi-bin`** — a Rust deploy is always a
      manual copy from `target/release/`, so hop-2 always applies.
@@ -138,8 +146,8 @@ guessing at a procedure that hasn't been verified for it.
    `UNTRACEABLE`. Green that should be red is the failure worth spending on;
    red that should be green only costs a redeploy.
 
-   Reference implementations: `~/Git/Rupert` (csproj `StampCommitId` target —
-   mind that `--` is illegal inside an XML comment) and `~/Git/Pintail`
+   Reference implementations: `matthew.heath/Rupert` (csproj `StampCommitId` target —
+   mind that `--` is illegal inside an XML comment) and `matthew.heath/Pintail`
    (`build.rs` emitting a `RIBUILDSTAMP:` literal, since Rust has no version
    resource). Both use the dirty flag, which ignores untracked files, so
    scratch beside the project does not mark every build dirty.
@@ -175,7 +183,7 @@ guessing at a procedure that hasn't been verified for it.
      exe, UNC path to `R:` path), and a stale exe never sits in `cgi-bin`. The
      held file stays locked until its holder exits, so remove it at the end if
      you can and leave it if you can't; the next run's sweep collects it.
-     Reference: `~/Git/CMS-Scanner/deploy.ps1` (`Install-File`,
+     Reference: `deploy.ps1` in `matthew.heath/CMS-Scanner` (`Install-File`,
      `Remove-Held`).
 
 8. **Verify by hash**, not by "the copy command didn't error." SHA-256 of
@@ -214,11 +222,11 @@ guessing at a procedure that hasn't been verified for it.
       -Assembly <name> -Project <name> -FromHash <step-2-hash> -ToHash <step-8-hash> `
       -DeployedBy <user> [-Note "..."]
     ```
-    (Source: `~/Git/Deployment/scripts/Record-Deploy.ps1`.) On a Linux host,
+    (Source: `scripts/Record-Deploy.ps1` in `Ramsden-International/Deployment`.) On a Linux host,
     `DEPLOY_INBOX=/mnt/RIVSPROD02_RI_SERVICES/Outputs/deploy-inbox sh
     /mnt/RIVSPROD02_RI_SERVICES/Scripts/record-deploy.sh <assembly> <to-hash>
     [project] [from-hash] [note]` does the same (reference:
-    `~/Git/Ratty/deploy/deploy.sh` on vsprod).
+    `deploy/deploy.sh` in `Ramsden-International/Ratty`).
 
     **Never write `deploy_history.sqlite` directly**, with `sqlite3` or
     anything else. It lives on an SMB share, where SQLite's locking cannot be
@@ -268,7 +276,7 @@ guessing at a procedure that hasn't been verified for it.
 12. **Register the program with the Chestnut dashboard** — only for a program
     that logs through Chestnut. The dashboard's Repo column and version links,
     and the repo `Chestnut.Issues` files issues in, all come from
-    `~/Git/Chestnut/dashboard/chestnut-repos.json`, a flat
+    `dashboard/chestnut-repos.json` in `Ramsden-International/Chestnut`, a flat
     `"<chestnut program>": "<owner>/<repo>"` map. A program missing from it
     shows `—` for its repo and its problems only raise `program_unmapped`
     warnings. Nothing else adds the entry, so this is the step that does.
@@ -282,7 +290,7 @@ guessing at a procedure that hasn't been verified for it.
     - If the key is already there with the same value, do nothing. If it is
       there with a *different* value, stop and say so rather than overwriting.
     - Otherwise add it, keeping the keys alphabetical, then commit that one file
-      in `~/Git/Chestnut` on its checked-out branch (`git add
+      in a Chestnut checkout (open one in Sprout if none is) on its checked-out branch (`git add
       dashboard/chestnut-repos.json`, never `-A`; that tree carries unrelated
       untracked files). Don't push the Chestnut repo; push only when asked. If
       the file already has uncommitted edits, stop.
@@ -300,7 +308,7 @@ deploy and commit it — a chat transcript is not a durable record of a
 procedure, which is the same class of problem as a binary that exists only on
 a share.
 
-`~/Git/DDBMakerCGI/deploy.ps1` is the reference: it implements steps 2-11 for
+`deploy.ps1` in `matthew.heath/DDBMakerCGI` is the reference: it implements steps 2-11 for
 one project in ~130 lines. A compatible script has to:
 
 - **Refuse a dirty tree** unless explicitly overridden (`-AllowDirty`), and

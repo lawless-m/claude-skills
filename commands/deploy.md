@@ -9,7 +9,7 @@ fix was committed — `dotnet publish` was run, but the built exe was never
 copied to `cgi-bin`. No error, no log line, no alert; the app just quietly got
 slower every day. See the `Deployment` repo (`~/Git/Deployment`,
 `notes/01-the-problem.md`) for the full post-mortem this procedure is drawn
-from. `DeployDrift.ps1` in that repo (deployed at `R:\Scripts\DeployDrift.ps1`)
+from. `DeployDrift.ps1` in that repo (deployed at `\\rivsprod02\RI Services\Scripts\DeployDrift.ps1`)
 is the read-only detector for this failure mode; this command is the
 procedure for deploying without causing it.
 
@@ -92,7 +92,7 @@ guessing at a procedure that hasn't been verified for it.
      reads and rewrites in place). Skipping this on the data side is what
      turned a bug into 25,360 deleted rows during the Translation fix.
 
-   **Backups go in `R:\Outputs\deploy-backups\<Assembly>\`, never beside the
+   **Backups go in `\\rivsprod02\RI Services\Outputs\deploy-backups\<Assembly>\`, never beside the
    file they copy.** Writing `Name.exe.bak-YYYYMMDD` into `cgi-bin` was the
    earlier convention and it was a bad one on two counts. `cgi-bin` and `www`
    are *served*: a `.html.bak` there is fetchable over HTTP, and stale exes sit
@@ -169,7 +169,7 @@ guessing at a procedure that hasn't been verified for it.
      running process carries on from the renamed file. A CGI request in
      flight, or a virus scanner re-reading a large exe, is enough to hold it —
      CMS Scanner's deploy failed on exactly that on 2026-09-23. Move it into
-     `R:\Outputs\deploy-backups\<Assembly>\` as `Name.exe.inuse-<stamp>`,
+     `\\rivsprod02\RI Services\Outputs\deploy-backups\<Assembly>\` as `Name.exe.inuse-<stamp>`,
      never beside the original: `R:` is `\\rivsprod02\RI Services`, the same
      share as `TinyWeb`, so the move is still a rename (tested with a running
      exe, UNC path to `R:` path), and a stale exe never sits in `cgi-bin`. The
@@ -210,7 +210,7 @@ guessing at a procedure that hasn't been verified for it.
 11. **Record the deploy and clean up.** Once verified, log it to the deploy
     history so there's a durable record beyond this conversation:
     ```
-    pwsh -File R:\Scripts\Record-Deploy.ps1 `
+    pwsh -File \\rivsprod02\RI Services\Scripts\Record-Deploy.ps1 `
       -Assembly <name> -Project <name> -FromHash <step-2-hash> -ToHash <step-8-hash> `
       -DeployedBy <user> [-Note "..."]
     ```
@@ -224,11 +224,12 @@ guessing at a procedure that hasn't been verified for it.
     anything else. It lives on an SMB share, where SQLite's locking cannot be
     trusted (a Linux CIFS mount fails at it outright, which is how Ratty's
     2026-09-26 deploy went unrecorded). Both recorders only queue a JSON file
-    in `R:\Outputs\deploy-inbox\`; the `DeployDrift-Producer` task is the one
-    writer and inserts it within five minutes. So the row is not in the table
+    in `\\rivsprod02\RI Services\Outputs\deploy-inbox\`; the deploy drift producer on RIVSPROD01
+    (`deploydrift-producer.timer`) is the one writer and inserts it within five
+    minutes. So the row is not in the table
     the moment the deploy finishes. Confirm it arrived by the file moving to
     `deploy-inbox\done\`, and look in `deploy-inbox\failed\` plus the producer
-    log in `R:\Logs\DeployDrift\` if it doesn't. `-SqliteOut` is still
+    log in `\\rivsprod02\RI Services\Logs\DeployDrift\` if it doesn't. `-SqliteOut` is still
     accepted and ignored, so older deploy scripts that pass it keep working.
 
     **On Linux, also register the deploy** — recording says what happened once;
@@ -252,7 +253,7 @@ guessing at a procedure that hasn't been verified for it.
     `notes/06-linux-coverage.md`.
 
     Then remove this
-    run's backups from `R:\Outputs\deploy-backups\<Assembly>\` (or leave them
+    run's backups from `\\rivsprod02\RI Services\Outputs\deploy-backups\<Assembly>\` (or leave them
     briefly if the user wants a grace period). `DeployDrift.ps1`'s next run
     will independently confirm the exe as `OK` (companion files aren't covered
     yet — see the Deployment repo's open questions).
@@ -285,7 +286,7 @@ guessing at a procedure that hasn't been verified for it.
       dashboard/chestnut-repos.json`, never `-A`; that tree carries unrelated
       untracked files). Don't push the Chestnut repo; push only when asked. If
       the file already has uncommitted edits, stop.
-    - **Publish it**: copy the file to `R:\TinyWeb\www\pibs\chestnut-repos.json`
+    - **Publish it**: copy the file to `\\rivsprod02\RI Services\TinyWeb\www\pibs\chestnut-repos.json`
       and hash-verify the copy. That is the copy the dashboard fetches, so the
       repo edit changes nothing until it lands. It is the same copy Chestnut's
       own `src\Chestnut.Cgi\deploy.ps1` makes, so the next dashboard deploy
@@ -305,7 +306,7 @@ one project in ~130 lines. A compatible script has to:
 - **Refuse a dirty tree** unless explicitly overridden (`-AllowDirty`), and
   capture the commit sha and subject for the deploy note.
 - **Hash the live artefact first, then back it up** into
-  `R:\Outputs\deploy-backups\<Assembly>\`, not next to the original. With
+  `\\rivsprod02\RI Services\Outputs\deploy-backups\<Assembly>\`, not next to the original. With
   `<PublishDir>` pointing at the destination the publish overwrites production
   directly, so the backup cannot be taken after it.
 - **Read the destination out of the project file** instead of repeating it in
@@ -337,7 +338,7 @@ one project in ~130 lines. A compatible script has to:
 
 Write it, then run it for the deploy at hand; the first real run is also the
 test of the script. Note that the destination is machine-specific
-(`R:\TinyWeb\www\cgi-bin\`) — that is the estate's existing convention,
+(`\\rivsprod02\RI Services\TinyWeb\www\cgi-bin\`) — that is the estate's existing convention,
 not something this procedure introduces.
 
 If the project also lacks a `<PublishDir>`, add one while you are there.
@@ -369,7 +370,7 @@ the hop-2 "built but never copied" signal that publishing straight to
   deploy is done" — check every file the project's own docs say it deploys.
 - **Never write a backup into a served directory.** `cgi-bin`, `www` and
   `pibs` are reachable over HTTP; a `.bak` there is a stale copy of production
-  that anyone can fetch. Backups belong in `R:\Outputs\deploy-backups\`.
+  that anyone can fetch. Backups belong in `\\rivsprod02\RI Services\Outputs\deploy-backups\`.
   Hand-made checkpoint files whose names record an intent (`cages.html
   .bak-20260914-precagezero`) are someone's working history, not deploy
   residue — leave those alone and ask before touching them.

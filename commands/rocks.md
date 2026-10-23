@@ -32,14 +32,21 @@ dependencies (`GET /repos/<repo>/issues/<index>/dependencies`) are what `blocked
    and stop.
 2. **Pick** the lowest-numbered open rock whose every dependency is **closed**. If none:
    - no open rocks → the stone is crushed. Every rock is closed, so none halted and the gate rock
-     passed. Re-read the milestone's issues from the API to confirm that `open_issues` is 0, and
-     that the gate (the highest-numbered rock) is closed with a passing comment. Then:
-     1. **Close the milestone**: `PATCH /repos/<repo>/milestones/<id>` with `{"state": "closed"}`.
+     passed. Confirm that the gate (the highest-numbered rock) is closed with a passing comment.
+     Then:
+     1. **Close adopted issues.** For each open non-rock issue in the milestone, find a comment
+        from `claude` whose first line begins `adopted:`. If there is one, comment with the gate's
+        number and result, set the `fixed` label (replacing the workflow label, e.g. `triage`), and
+        close it. If any non-rock issue has **no** `adopted:` comment, leave it open and stop:
+        `rocks: milestone <title> held open — #<n> was never adopted by /crush`. Someone raised it
+        separately, so it needs a person's decision. Re-read the milestone from the API and
+        confirm `open_issues` is 0 before going on.
+     2. **Close the milestone**: `PATCH /repos/<repo>/milestones/<id>` with `{"state": "closed"}`.
         Print `rocks: milestone <title> cleared and closed — <n> carried`, with the gate's result.
-     2. **Crush the next stone**: invoke the `crush` skill, which picks the next earliest open
+     3. **Crush the next stone**: invoke the `crush` skill, which picks the next earliest open
         milestone. Report what it created, then stop. Starting the next milestone's rocks is a fresh
         `/rocks`, so each phase begins from a clean read of its own queue.
-     3. If no open milestones remain, `/crush` says so. Print `rocks: all stones crushed — project
+     4. If no open milestones remain, `/crush` says so. Print `rocks: all stones crushed — project
         plan complete` and stop.
 
      If anything is still open (a halted rock, or the gate not closed), the milestone stays open

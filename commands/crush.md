@@ -51,11 +51,19 @@ Read the `Gitea` skill for auth (`$GITEA_TOKEN` is the `claude` account; no `Sud
    `owner` and `repo`, Gitea returns 404). Plain ordering needs no dependency — issue numbers
    already carry it.
 
-7. **Verify the queue before handing it over.** Re-read the created rocks from the API: every one
+7. **Adopt the stone's other open issues.** Airlock hand-over raises one `triage` issue in the
+   first milestone, titled for that phase. Left alone, it stays open after every rock closes, and
+   the milestone can never clear. For each open issue in the milestone **without** the `rock`
+   label, post a comment whose first line is exactly `adopted: carried by rocks #<first>–#<last>,
+   gate #<last>`, followed by one line saying /rocks closes it when the gate passes. Change
+   nothing else on it: no label, no state. Only issues that are open at crush time are adopted.
+
+8. **Verify the queue before handing it over.** Re-read the created rocks from the API: every one
    in the right milestone, labelled `rock`, with a `**Verify:**` line, and no dependency cycle
    (repeatedly removing unblocked rocks must empty the list). A queue that cannot drain is a loop
    that cannot end. Then:
-   `crush: <n> rocks on <milestone>. Gate: #<last> — <check>. Run: /rocks`
+   `crush: <n> rocks on <milestone>. Gate: #<last> — <check>. Run: /rocks`, adding
+   `Adopted: #<ids>` when step 7 adopted any.
 
 If `tmp/rocks.json` holds a question instead of rocks, put it to the user and stop. Create nothing.
 

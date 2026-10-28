@@ -29,7 +29,8 @@ dependencies (`GET /repos/<repo>/issues/<index>/dependencies`) are what `blocked
 
 1. **Read the queue.** Repo from `git remote get-url origin`. Earliest open milestone; its issues
    `state=open` labelled `rock`, lowest number first. None → `rocks: nothing to carry — run /crush`
-   and stop.
+   and stop. Then run `claude mcp list` once and print it, so the run log shows which MCPs were
+   Connected when the carrying started.
 2. **Pick** the lowest-numbered open rock whose every dependency is **closed**. If none:
    - no open rocks → the stone is crushed. Every rock is closed, so none halted and the gate rock
      passed. Confirm that the gate (the highest-numbered rock) is closed with a passing comment.
@@ -54,8 +55,17 @@ dependencies (`GET /repos/<repo>/issues/<index>/dependencies`) are what `blocked
    - rocks remain but all blocked → `rocks: stalled — #<n> blocked by #<ids>` and stop.
    - a rock whose **last comment begins `halted:`** is skipped, not retried (see below).
 3. **Read only that issue.** Announce: `rocks: starting #<n> — <title>`.
+   **Check the tools it names before touching anything.** If the body depends on a house service
+   or an MCP — Piggy, Squirrel, any MCP server — confirm it works *now*: Piggy's `/health` must say
+   `browserAlive: true` (the server can be up with its browser dead); an MCP must be Connected and
+   answer one cheap call. If it doesn't, comment `halted: <service> unavailable — <what you saw;
+   how to bring it back>` and go to 2. A broken tool is a halt, not a verify failure to debug and
+   not a reason to build around it.
 4. **Do the work.** Don't expand scope or refactor adjacent code — every changed line should trace
-   to the body. Run its `**Verify:**` command and any others the body names, and confirm they pass.
+   to the body. If the work needs something a house tool or MCP already does, use the tool; if that
+   tool is unavailable, halt — never substitute a home-made equivalent (a self-spawned browser for
+   Piggy, a raw parquet read for Squirrel). Run its `**Verify:**` command and any others the body
+   names, and confirm they pass.
 5. **Close or halt** — never close on a failed verification; partial completion is not completion:
    - Verified → commit on the current branch, staging files explicitly, message referencing the
      issue (`#<n>`). Comment the sha and what was done, then **close the issue**. Push only if the

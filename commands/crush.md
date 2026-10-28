@@ -30,8 +30,18 @@ Read the `Gitea` skill for auth (`$GITEA_TOKEN` is the `claude` account; no `Sud
    stone's title and criteria back in one line before planning, so a misread costs one exchange
    rather than a whole queue.
 
+   **Then inventory the tools, house tools first.** The planner can't see what exists, and a
+   planner that doesn't know about a house tool will re-roll it (Phase 2 of WaitroseScorecard was
+   planned to spawn its own headless Chrome while Piggy sat on the same box). Run `claude mcp list`
+   for every registered MCP and whether it is Connected, and list the house projects that are tools
+   or services — the folders beside this repo (`C:\Sprout\*` on Windows hosts) whose README says
+   so: Piggy, Squirrel, ExportKing, MrsFlow, Chestnut and the like — one line each, what it does and
+   how to call it. For any service a rock is likely to need, check it actually works now (Piggy:
+   `/health` with `browserAlive: true`; an MCP: Connected), and note any that are down. Put all of
+   this in the brief as a **Tooling** section, above the plain CLI tools.
+
 4. **Spawn the planner**: `Agent` with `subagent_type: "general-purpose"`, `model: "fable"`,
-   prompt = the brief plus the rules below verbatim, with `<ROCKS_FILE>` replaced by the absolute
+   prompt = the brief (with its Tooling section) plus the rules below verbatim, with `<ROCKS_FILE>` replaced by the absolute
    path of `tmp/rocks.json` in the repo. Create `tmp/` if missing and delete any old
    `tmp/rocks.json` first, so a stale file cannot pass for this run's plan. The planner writes rock
    *specs* to that file; you create the issues. **Read the specs from the file with a script, never
@@ -92,6 +102,11 @@ as `{"question": "..."}`, and your reply is the question.
   brief confirms exist** — never invent one), an observable done-when, and what must NOT be touched
   where scope creep is a risk.
 - `verify` is one shell command that passes or fails. No "check it looks right".
+- **Use the house tools.** If a tool or MCP in the brief's Tooling section covers a need, the rock
+  uses it and names it. Never plan a rock that re-implements one — no spawning a browser when
+  Piggy renders pages, no ad-hoc parquet readers when Squirrel or MrsFlow serves the data, no
+  hand-rolled client for a service that has one. A rock that depends on a house service says so
+  in its description, so `/rocks` can check the service is up before starting it.
 - The last rock is the **end-to-end gate**: the check you'd use to call the whole stone done,
   taken from its acceptance criteria. A finite list with a real final check is what makes the
   drain provably end.

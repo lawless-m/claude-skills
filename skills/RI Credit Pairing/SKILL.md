@@ -20,7 +20,26 @@ is enough for spend and volume totals. Pair credits when you need:
 - **document counts**: invoices, trips, order frequency, cases per order. The original and the
   reinvoice both count otherwise.
 - **buyer or "did a sale happen" counts**: an invoice credited in full and never reissued isn't a sale.
-- **period splits**: the original and its credit can fall in different periods.
+
+### Don't pair for cost or cases by period
+
+Pairing keeps totals right but moves the volume to the **reinvoice's** date. The plain net sum is
+better here: a credit and its reinvoice almost always share a month and cancel, so `sacost` and
+`saorgqty` stay in the original invoice's month, when the goods shipped.
+
+Example, customer 457722 (Tony's containers): `1209390` (30 Jul) and `1209485` (6 Aug) were each
+credited and re-raised on 30 Sep at a lower price, then credited and re-raised again on 1 Oct at
+the original price. Cost and cases were identical on every copy. The plain net sum keeps
+£311k cost and 8,315 cases in Jul/Aug, with Sep and Oct netting to zero (revenue alone swings
+−£15k / +£128). Pairing leaves only `1211184`/`1211185` and puts it all in October. Counting
+invoices only (`sacredit='0'`) gives three times the volume, and `1211118` shows a −£4k margin
+on its own.
+
+Measured 2026-10-29 over full-reversal credits since 2024 (stock lines): 348 credits (£2.97M cost)
+were reinvoiced at the same cost in the credit's month, and 8 (£25k) in a later month. 200
+(£1.55M) had no same-cost reinvoice within 60 days. These are a mix of genuine cancellations and
+reissues with amended quantities, e.g. `CR40862`. In 102 of those 200 the credit is dated in a later
+month than its original, and a plain sum removes the volume in the credit's month.
 
 ## There is no coded link — don't re-investigate
 

@@ -24,7 +24,13 @@ The rest is a normal README: build, run, settings (names, and where any secret c
 
 ## Also set the Gitea description
 
-The description sits beside the excerpt and is often empty. Give it one line, set in the repo's Gitea settings or with `PATCH /api/v1/repos/<owner>/<repo>` `{"description": "..."}` using the owner's token.
+The description sits beside the excerpt and is often empty. Once the README is pushed, give it one line saying what the repo does, usually the README's opening sentence cut down:
+
+```
+pwsh -NoProfile -File ~/.claude/skills/readme/Set-GiteaDescription.ps1 <owner>/<repo> "<one line>"
+```
+
+The script is in this skill's folder. It uses the owner's `GITEA_ACCESS_TOKEN` (never printed), changes only the description, and prints the old and new values. Show the user the line before setting it, because it replaces whatever is there. Neither MCP can do this: gitea-mcp has no repo-settings tool, and gitea-px is read-only by design.
 
 ## Check
 

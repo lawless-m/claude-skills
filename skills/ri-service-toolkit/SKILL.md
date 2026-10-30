@@ -1,6 +1,6 @@
 ---
 name: ri-service-toolkit
-description: Use when building a .NET 9 service from RI's shared components (ExportKing, KdbxCredentials, OhSheet, Anthea) deployed as a TinyWeb CGI, or registering a URL on the dw portal page.
+description: Use when building a .NET 9 service from RI's shared components (ExportKing, OhSheet, Anthea) deployed as a TinyWeb CGI, or registering a URL on the dw portal page. For passwords and the KeePass vault, use the Credentials skill.
 ---
 
 # RI Service Toolkit
@@ -39,48 +39,9 @@ When building or extending an RI service, follow these rules:
    that fails with server code `0x2C1E`. If you need a different dataset, find the alias in
    sibling production code before using it.
 
-3. **Credentials resolve through `Database.Open(path, secretStoreKey)`.** The standard
-   secret-store key for RI services is **`kdbx-services`** (not `kdbx-master`). The KDBX
-   file's master password lives in the OS secret store under that key; the library reads it
-   automatically. Never read the master password from config or source.
-
-   **The "OS secret store" is platform-specific, and on Linux it is `systemd` credentials —
-   not a keyring you can query ad-hoc.** On Linux the master password is a **root-only file at
-   `/etc/credstore/kdbx-services`**; the service unit declares
-   `LoadCredential=kdbx-services:/etc/credstore/kdbx-services`, systemd injects it into the
-   unit's private `$CREDENTIALS_DIRECTORY/kdbx-services`, and `KdbxCredentials` reads it from
-   there. **Consequence: a process NOT launched by systemd with that directive — a bare
-   `dotnet run`, a CLI like `kdbx-getfield`, an interactive shell — can't read it by default.**
-   There is no ambient keyring/daemon to fall back to (the kernel/gnome keyring is empty by
-   design), so the lookup just returns nothing *unless you provide the directory yourself*.
-
-   **Dev/manual access (this comes up constantly).** The Linux store reads
-   `$CREDENTIALS_DIRECTORY/<secretStoreKey>` *verbatim* — there is no systemd magic beyond that
-   env var. So on a dev box you reproduce the vault by hand once, then set the env var per run
-   (it doesn't need to be systemd):
-
-   ```bash
-   mkdir -p ~/.config/ri-creds && chmod 700 ~/.config/ri-creds
-   # UTF-8, NO trailing newline — hence printf '%s', not echo:
-   printf '%s' 'MASTER_PASSWORD' > ~/.config/ri-creds/kdbx-services && chmod 600 ~/.config/ri-creds/kdbx-services
-   # now any tool/app works when launched with the env var set:
-   CREDENTIALS_DIRECTORY=~/.config/ri-creds kdbx-getfield <db.kdbx> kdbx-services <group/entry> username
-   CREDENTIALS_DIRECTORY=~/.config/ri-creds dotnet run --project src/Foo.Cli -- ...
-   ```
-
-   `kdbx-getfield` (usage: `getfield <db> <secretStoreKey> <entry> <field>`, fields:
-   username/password/url/notes) lives at `/usr/local/bin` and is handy for verifying the file
-   is right — read the *username* to prove the unlock without printing the password. Only the
-   master-password value itself is still a secret you must obtain; the mechanism is not.
-   The RI vault password is constant, so provision this **once** and persist
-   `export CREDENTIALS_DIRECTORY="$HOME/.config/ri-creds"` in `~/.bashrc` **above** the
-   non-interactive guard (Debian's `.bashrc` `return`s early otherwise). On RI's Linux dev box
-   this is already set up; note non-interactive, non-login shells (some tool/cron invocations)
-   still don't source `.bashrc`, so there prefix the var or use `bash -lc`.
-   RI's current Linux host is **systemd 247 with no `systemd-creds`**, so this is an
-   **unencrypted `LoadCredential`** (not `LoadCredentialEncrypted`). The proven reference unit
-   is `S3ImageCache/deploy/s3imagecache.service` (the `Keepass-access-libs/csharp` lib is the
-   same one Windows uses; only the credential delivery differs).
+3. **Credentials come from the KeePass vault via KdbxCredentials** (secret-store key
+   `kdbx-services`). The vault, its entries, and how the master password reaches each kind of
+   process are in the **Credentials** skill — load it.
 
 4. **ExportKing is read/write.** It supports `SELECT` *and* DML (`INSERT`/`UPDATE`/`DELETE`
    via `ExecuteNonQuery`) with inline literals — escape single quotes by doubling them
@@ -103,13 +64,8 @@ When building or extending an RI service, follow these rules:
    date drives the Anthea lookup — not the date the service runs. Keep report context
    (names, codes, dates) distinct from generation time.
 
-8. **Any service password the CGI needs must live in KeePass, and its KDBX master key in
-   the secret store of the account the service runs as.** TinyWeb CGIs run as **LocalSystem**,
-   so the master key must be in **SYSTEM's** vault — the credential is per-user (DPAPI), so
-   provisioning it as your own login does nothing for the service. Don't reinvent the
-   provisioning steps: the **KeePass docs** (`Keepass-access-libs/csharp/USAGE.md`, §3) give
-   the exact recipe for getting master keys into each kind of vault, including the LocalSystem
-   one-shot scheduled-task method (`runas` can't assume SYSTEM). Follow that.
+8. **TinyWeb CGIs run as LocalSystem, so the KDBX master key must be in SYSTEM's secret
+   store**, not yours. The provisioning recipe is in the **Credentials** skill.
 
 9. **Publish self-contained, single-file, win-x64.** Deploy the one exe plus its
    `.properties` to `\\RIVSPROD02\RI Services\TinyWeb\www\cgi-bin\`. Always verify *live*
@@ -202,22 +158,9 @@ ri.s3_key_prefix_BRANDBANK=ProductImagesBrandbank
 - Note the **quadruple backslashes** for UNC paths in Java-properties (`\\` escape, doubled).
 - S3 has **two sources** (RAMSDEN, BRANDBANK); OhSheet reconciles them and prefers the largest image.
 
-## KeePass credential resolution (`Credentials/CredentialStore.cs`)
-
-```csharp
-using KdbxCredentials;
-
-public static (string User, string Password) GetDbisamLogin(SuperSubConfig cfg)
-{
-    using var db = Database.Open(cfg.KdbxPath, cfg.KdbxSecretStoreKey);  // key = "kdbx-services"
-    using var entry = db.Lookup(cfg.KdbxEntry);                          // e.g. "Exportmaster/RIVSEM01"
-    return (entry.Username ?? "", entry.Password ?? "");
-}
-```
-
-**Key points:**
-- The master password is fetched from the OS secret store under `kdbx-services` — never passed in.
-- Read-only; `Database`, `entry` are `IDisposable` — `using` them.
+SuperSub reads the DBISAM login in `Credentials/CredentialStore.cs` with
+`Database.Open(cfg.KdbxPath, cfg.KdbxSecretStoreKey)` + `Lookup(cfg.KdbxEntry)` — see the
+**Credentials** skill.
 
 ## Exportmaster lookup (`Products/ProductLookup.cs`)
 
@@ -520,11 +463,7 @@ against sibling production code (MrsFlow) before inventing one.
 ### Credentials not found when running under TinyWeb
 **Cause:** TinyWeb runs as **LocalSystem**; the KDBX master key was provisioned into a *user*
 vault (per-user DPAPI), so the service can't read it.
-**Solution:** Get the master key into **SYSTEM's** vault. The KeePass docs
-(`Keepass-access-libs/csharp/USAGE.md`, §3 + `R:\kdbx\provision-system.bat`) have the exact
-one-shot scheduled-task recipe — `runas` can't assume SYSTEM. Use the **`kdbx-services`**
-secret-store key (not `kdbx-master`). Because the secret lives in SYSTEM's vault, `cmdkey
-/list` as an admin won't show it — confirm by having the service itself read it.
+**Solution:** Get the master key into **SYSTEM's** vault — see the **Credentials** skill.
 
 ### Anthea returns blanks for everything
 **Cause:** Customer code, delivery date, or array alignment is off.
@@ -536,10 +475,9 @@ not the request order.
 
 1. One `.properties` file; pointers to secrets, never secrets.
 2. `NISAINT_CS` catalog; verify aliases against production code.
-3. `kdbx-services` secret-store key; master password from the OS vault.
+3. Secrets from the KeePass vault (Credentials skill).
 4. ExportKing does DML too; escape quotes by doubling.
 5. Anthea is best-effort and index-aligned; never let it sink the job.
 6. Report dates drive lookups, not the run clock.
-7. Service passwords in KeePass; master key in the run-as account's secret store
-   (LocalSystem ⇒ SYSTEM's vault) — follow the KeePass docs for provisioning.
+7. TinyWeb runs as LocalSystem ⇒ master key in SYSTEM's secret store.
 8. Publish self-contained single-file; deploy exe + properties; verify live.

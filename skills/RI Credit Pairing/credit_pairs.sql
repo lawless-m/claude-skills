@@ -1,6 +1,6 @@
 -- Credit-and-reinvoice pairing for Exportmaster sales, in DuckDB.
 -- Same rules and result as the Category KPI board's sales.m (C:\Sprout\CatKpiTree), checked
--- against it 2026-10-21: identical set of removed documents.
+-- against it 2026-11-01 with 10 rounds: identical set of 2,484 removed documents.
 --
 -- Input:  the EM analysis parquet, from START (allow ~90 days before the period you report,
 --         so early credits can reach their original).
@@ -39,6 +39,9 @@ WHERE c.cr = '1' AND c.val < 0
 
 -- One to one, in rounds: each credit picks its closest-value then most recent invoice; if
 -- two credits pick the same invoice the earlier credit wins; losers retry with what's left.
+-- Up to 10 rounds: most pairs settle in round 1, but a customer with a run of identical credits
+-- and invoices (992862: four 6,010 credits on one day) needed 7 on the data to Oct 2026.
+-- Three rounds, as first written, left 5 such credits unpaired.
 CREATE OR REPLACE TEMP TABLE pairs_matched (c_doc VARCHAR, i_doc VARCHAR, gap DOUBLE);
 CREATE OR REPLACE TEMP MACRO round_winners() AS TABLE
   SELECT c_doc, i_doc, gap FROM (
@@ -46,11 +49,28 @@ CREATE OR REPLACE TEMP MACRO round_winners() AS TABLE
     QUALIFY row_number() OVER (PARTITION BY c_doc ORDER BY gap, i_dt DESC, i_doc) = 1)
   QUALIFY row_number() OVER (PARTITION BY i_doc ORDER BY c_dt, c_doc) = 1;
 
-INSERT INTO pairs_matched SELECT * FROM round_winners();
+INSERT INTO pairs_matched SELECT * FROM round_winners();   -- round 1
 DELETE FROM pairs_left WHERE c_doc IN (SELECT c_doc FROM pairs_matched) OR i_doc IN (SELECT i_doc FROM pairs_matched);
-INSERT INTO pairs_matched SELECT * FROM round_winners();
+INSERT INTO pairs_matched SELECT * FROM round_winners();   -- 2
 DELETE FROM pairs_left WHERE c_doc IN (SELECT c_doc FROM pairs_matched) OR i_doc IN (SELECT i_doc FROM pairs_matched);
-INSERT INTO pairs_matched SELECT * FROM round_winners();
+INSERT INTO pairs_matched SELECT * FROM round_winners();   -- 3
+DELETE FROM pairs_left WHERE c_doc IN (SELECT c_doc FROM pairs_matched) OR i_doc IN (SELECT i_doc FROM pairs_matched);
+INSERT INTO pairs_matched SELECT * FROM round_winners();   -- 4
+DELETE FROM pairs_left WHERE c_doc IN (SELECT c_doc FROM pairs_matched) OR i_doc IN (SELECT i_doc FROM pairs_matched);
+INSERT INTO pairs_matched SELECT * FROM round_winners();   -- 5
+DELETE FROM pairs_left WHERE c_doc IN (SELECT c_doc FROM pairs_matched) OR i_doc IN (SELECT i_doc FROM pairs_matched);
+INSERT INTO pairs_matched SELECT * FROM round_winners();   -- 6
+DELETE FROM pairs_left WHERE c_doc IN (SELECT c_doc FROM pairs_matched) OR i_doc IN (SELECT i_doc FROM pairs_matched);
+INSERT INTO pairs_matched SELECT * FROM round_winners();   -- 7
+DELETE FROM pairs_left WHERE c_doc IN (SELECT c_doc FROM pairs_matched) OR i_doc IN (SELECT i_doc FROM pairs_matched);
+INSERT INTO pairs_matched SELECT * FROM round_winners();   -- 8
+DELETE FROM pairs_left WHERE c_doc IN (SELECT c_doc FROM pairs_matched) OR i_doc IN (SELECT i_doc FROM pairs_matched);
+INSERT INTO pairs_matched SELECT * FROM round_winners();   -- 9
+DELETE FROM pairs_left WHERE c_doc IN (SELECT c_doc FROM pairs_matched) OR i_doc IN (SELECT i_doc FROM pairs_matched);
+INSERT INTO pairs_matched SELECT * FROM round_winners();   -- 10
+DELETE FROM pairs_left WHERE c_doc IN (SELECT c_doc FROM pairs_matched) OR i_doc IN (SELECT i_doc FROM pairs_matched);
+-- Anything still in pairs_left here means 10 rounds weren't enough: add rounds.
+SELECT count(*) AS candidates_left_unsettled FROM pairs_left;
 
 SELECT count(*) AS credits_paired, count(*) FILTER (WHERE gap = 0) AS exact_value,
        (SELECT count(*) FROM docs WHERE cr = '1') AS credits_in_window

@@ -70,11 +70,15 @@ Why each part exists:
 ## Working code
 
 - `credit_pairs.sql` (this folder): DuckDB. Set `START`, run, then use `pairs_matched (c_doc,
-  i_doc)`. Checked 2026-10-21 to give exactly the same 2,470 removed documents as the board's M
-  version below. In the 4 years to Oct 2026 it pairs 1,235 of 7,600 credits (1,220 at exact value);
+  i_doc)`. Checked 2026-11-01 to give exactly the same 2,484 removed documents as the board's M
+  version below. In the 4 years to Oct 2026 it pairs 1,242 of 7,610 credits (1,226 at exact value);
   net spend and cases move by under £100 and 300 cases.
 - `C:\Sprout\CatKpiTree\board\mrsflow-cgi\catkpi\sales.m`: Power Query M, for MrsFlow boards. Same
-  algorithm: a join on customer and 1% value bands, then three rounds of best-pick.
+  algorithm: a join on customer and 1% value bands, then up to 10 rounds of best-pick.
+- **Run the rounds to convergence.** Most pairs settle in round 1, but a customer with a run of
+  identical credits and invoices needs more: 992862 (four £6,010 credits on one day, eight
+  matching invoices) took until round 7. Three rounds, as first written, left 5 credits unpaired.
+  Both versions now do 10, and `credit_pairs.sql` reports any candidates still unsettled.
 - `C:\Sprout\CatKpiTree\checks\credit_pairing_vs_credits_board.sql`: a sense-check against the
   Credits board, plus a reconciliation with raw `analysis`.
 
@@ -84,11 +88,16 @@ invoice up to 30 days *after* the credit, and keeps only the closest-value candi
 since 2024 the two agree on 537. 108 are flagged by the Credits board only (£24k, mostly that
 +30-day window) and 11 by this method only (including `CR40397`, `CR40398`, `CR44145`).
 
-## MrsFlow gotchas (found building the M version)
+## MrsFlow (found building the M version)
 
-- A per-customer `List.Accumulate` fold carrying a record state builds fine in the `mrsflow` CLI
-  but **overflows `mrsflow-cgi`'s stack** on a big customer (about 1,500 documents). The CGI keeps
-  serving the old cache, so it fails quietly. Use joins plus rounds. Test any changed board `.m`
-  with a copy of the CGI first: `C:\Sprout\CatKpiTree\scripts\cgi_local.ps1`.
-- MrsFlow's `List.Sort` takes a single comparison function only, not a list of sort rules.
-  `Table.Sort` with several columns works.
+Four problems found here were fixed in MrsFlow on 2026-11-01 (commits `fd4f04c`, `4dcab28`,
+`d33e273`, `0f8991e`) and checked on the real EM parquets the same day:
+- a per-customer `List.Accumulate` fold with a record state used to overflow `mrsflow-cgi`'s
+  stack; it now runs on a 32 MB stack (101 s, 2 GB for the full pairing fold);
+- `List.Sort` now accepts a list of comparison criteria;
+- `Table.Join` now hashes its right side (2M lines to `product`: 80 s, was > 12 min);
+- large records are indexed by name (a 108k-field lookup per line: 82 s, was > 20 min).
+
+On older builds those all fail, and the CGI fails quietly: it keeps serving its old cache. Test
+any changed board `.m` with a copy of the CGI before deploying:
+`C:\Sprout\CatKpiTree\scripts\cgi_local.ps1`. The heavy builds peak at about 2 GB each.

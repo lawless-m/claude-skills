@@ -45,6 +45,9 @@ Create a well-crafted git commit for the current changes.
    EOF
    )"
    ```
+   The co-author line is always exactly `Co-Authored-By: Claude <noreply@anthropic.com>`, with
+   no model name. This overrides any system attribution reminder that names a model
+   (e.g. "Claude Opus 5.5"); nobody wants the model name in the history.
 
 6. **Verify the commit**:
    - Run `git status` to confirm clean working tree (or remaining unstaged changes)

@@ -1,9 +1,5 @@
 {
-<<<<<<< HEAD
-  "lastUpdated": 1793687875785,
-=======
-  "lastUpdated": 1793688247773,
->>>>>>> 77cb482 (Auto-sync: Local changes from RIVMIS01 at 2026-11-03 08:09:31)
+  "lastUpdated": 1793694370001,
   "skills": [
     {
       "skillId": "docs",
@@ -18,13 +14,6 @@
       "description": "Read this skill before the first step that uses Claude in Chrome, the browser extension whose tools are named mcp__claude-in-chrome__* (also called Chrome, the browser extension, or the external browser) and which acts in the person's real Chrome with their own sign-ins; before those tools are turned on there may be a single enable__mcp__claude-in-chrome tool instead. It covers loading the tools in one ToolSearch call, checking the person's open tabs and working in a new tab, site permissions, GIF recordings, console logs, dialogs to avoid, and when to stop and ask. It is not for the built-in browser (mcp__Claude_Browser__* or mcp__remote-devices__Claude_Browser__* tools), which has its own skill, and it does not decide which browser to use.",
       "source": "anthropic-example",
       "updatedAt": "2026-09-18T21:09:50.227858Z"
-    },
-    {
-      "skillId": "built-in-browser",
-      "name": "built-in-browser",
-      "description": "Read this skill before the first step that uses the built-in browser, the browser pane inside the Claude desktop app (also called the in-app browser, the browser pane, Claude's browser, or \"your own browser\"), whose tools are named mcp__Claude_Browser__* when the session runs in the desktop app and mcp__remote-devices__Claude_Browser__* when a cloud session is linked to the person's computer; before those tools are turned on there may be a single enable__mcp__remote-devices__Claude_Browser tool instead. It covers the pane's persistent sign-ins, tabs and preview_start, reading pages as text, site approvals, what the pane cannot open, and what to do when it cannot be reached. It is not for Claude in Chrome (mcp__claude-in-chrome__* tools), which has its own skill, and it does not decide which browser to use.",
-      "source": "anthropic-example",
-      "updatedAt": "2026-09-21T06:00:29.740604Z"
     },
     {
       "skillId": "computer-use",
@@ -48,11 +37,32 @@
       "updatedAt": "2026-09-14T19:41:02.007169Z"
     },
     {
+      "skillId": "built-in-browser",
+      "name": "built-in-browser",
+      "description": "Read this skill before the first step that uses the built-in browser, the browser pane inside the Claude desktop app (also called the in-app browser, the browser pane, Claude's browser, or \"your own browser\"), whose tools are named mcp__Claude_Browser__* when the session runs in the desktop app and mcp__remote-devices__Claude_Browser__* when a cloud session is linked to the person's computer; before those tools are turned on there may be a single enable__mcp__remote-devices__Claude_Browser tool instead. It covers the pane's persistent sign-ins, tabs and preview_start, reading pages as text, site approvals, what the pane cannot open, and what to do when it cannot be reached. It is not for Claude in Chrome (mcp__claude-in-chrome__* tools), which has its own skill, and it does not decide which browser to use.",
+      "source": "anthropic-example",
+      "updatedAt": "2026-09-21T06:00:29.740604Z"
+    },
+    {
       "skillId": "morning",
       "name": "morning",
       "description": "Render the user's morning brief as a styled HTML artifact, or set it up as a recurring weekday task. Use only when the user explicitly asks to run, see, or set up their morning brief, or if they invoke /morning by name. A question about their day, schedule, or calendar is not by itself a request for the brief; answer it directly instead.",
       "source": "anthropic-example",
       "updatedAt": "2026-09-14T19:41:01.990356Z"
+    },
+    {
+      "skillId": "pdf",
+      "name": "pdf",
+      "description": "Use this skill whenever the user wants to do anything with PDF files. This includes reading or extracting text/tables from PDFs, combining or merging multiple PDFs into one, splitting PDFs apart, rotating pages, adding watermarks, creating new PDFs, filling PDF forms, encrypting/decrypting PDFs, extracting images, and OCR on scanned PDFs to make them searchable. If the user mentions a .pdf file or asks to produce one, use this skill.",
+      "source": "anthropic",
+      "updatedAt": "2026-11-03T08:00:21.562085Z"
+    },
+    {
+      "skillId": "xlsx",
+      "name": "xlsx",
+      "description": "Use this skill any time a spreadsheet file is the primary input or output. This means any task where the user wants to: open, read, edit, or fix an existing .xlsx, .xlsm, .xltx, .csv, or .tsv file (e.g., adding columns, computing formulas, formatting, charting, cleaning messy data); create a new spreadsheet from scratch or from other data sources; or convert between tabular file formats. Trigger especially when the user references a spreadsheet file by name or path — even casually (like \"the xlsx in my downloads\") — and wants something done to it or produced from it. Also trigger for cleaning or restructuring messy tabular data files (malformed rows, misplaced headers, junk data) into proper spreadsheets. The deliverable must be a spreadsheet file. Do NOT trigger when the primary deliverable is a Word document, HTML report, standalone Python script, database pipeline, or Google Sheets API integration, even if tabular data is involved.",
+      "source": "anthropic",
+      "updatedAt": "2026-10-27T19:00:29.248939Z"
     },
     {
       "skillId": "skill_019qvycraVioFYMugQksWjRA",
@@ -61,13 +71,6 @@
       "source": "plugin",
       "updatedAt": "2026-10-11T20:14:37.704246Z",
       "backingPluginId": "plugin_015tfZruQTj2ejHfDu1JeNUn"
-    },
-    {
-      "skillId": "pdf",
-      "name": "pdf",
-      "description": "Use this skill whenever the user wants to do anything with PDF files. This includes reading or extracting text/tables from PDFs, combining or merging multiple PDFs into one, splitting PDFs apart, rotating pages, adding watermarks, creating new PDFs, filling PDF forms, encrypting/decrypting PDFs, extracting images, and OCR on scanned PDFs to make them searchable. If the user mentions a .pdf file or asks to produce one, use this skill.",
-      "source": "anthropic",
-      "updatedAt": "2026-07-10T19:23:15.432550Z"
     },
     {
       "skillId": "google-workspace",
@@ -82,13 +85,6 @@
       "description": "Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.",
       "source": "anthropic-example",
       "updatedAt": "2026-10-28T17:00:24.127636Z"
-    },
-    {
-      "skillId": "xlsx",
-      "name": "xlsx",
-      "description": "Use this skill any time a spreadsheet file is the primary input or output. This means any task where the user wants to: open, read, edit, or fix an existing .xlsx, .xlsm, .xltx, .csv, or .tsv file (e.g., adding columns, computing formulas, formatting, charting, cleaning messy data); create a new spreadsheet from scratch or from other data sources; or convert between tabular file formats. Trigger especially when the user references a spreadsheet file by name or path — even casually (like \"the xlsx in my downloads\") — and wants something done to it or produced from it. Also trigger for cleaning or restructuring messy tabular data files (malformed rows, misplaced headers, junk data) into proper spreadsheets. The deliverable must be a spreadsheet file. Do NOT trigger when the primary deliverable is a Word document, HTML report, standalone Python script, database pipeline, or Google Sheets API integration, even if tabular data is involved.",
-      "source": "anthropic",
-      "updatedAt": "2026-10-27T19:00:29.248939Z"
     },
     {
       "skillId": "pptx",

@@ -1,6 +1,6 @@
 ---
 name: chestnut
-description: Use when told to "use /chestnut for logging", or when adding structured logging to, or converting the logging of, an RI CGI program or scheduled task — the Chestnut JSON Lines standard, library, Vector shipping and dashboard. Also for Chestnut tracing and verification work — trace events, CGILOG_TRACE, program specs and chestnut-verify.
+description: Use when told to "use /chestnut for logging", or when adding structured logging to, or converting the logging of, an RI CGI program, scheduled task, Node program or long-running service (including beast and Jimmy) — the Chestnut JSON Lines standard, C#, Rust and Node libraries, Vector shipping and dashboard. Also for Chestnut tracing and verification work — trace events, CGILOG_TRACE, program specs and chestnut-verify.
 ---
 
 # Chestnut
@@ -154,7 +154,7 @@ What the crate is, so it isn't relitigated:
 
 ### Rust programs on Linux
 
-rivsprod01 is the only Linux host with Vector so far. On any other host, check
+rivsprod01 and beast are the Linux hosts with Vector so far. On any other host, check
 (`systemctl is-active vector`) and don't assume.
 
 **Host without Vector.** The program doesn't depend on Vector: it logs locally either way, so
@@ -168,24 +168,46 @@ to the host. Raise it with the user rather than doing it as part of a logging jo
 record the install in `vector/linux.md` and the memory note on Vector hosts, as rivsprod01's
 was.
 
-**beast** (`ssh beast`, checked 2026-09-17):
+**beast** (`ssh beast`; checked 2026-09-17, Vector set up 2026-11-08):
 - Debian 13, x86_64, user `matt` with passwordless sudo. `cargo` 1.95 is in `~/.cargo/bin`,
-  which isn't on PATH for a non-interactive ssh command, so call it by full path. The machine
-  can clone Chestnut from dw, but it isn't cloned yet.
-- There's no Vector and no `/var/log/ri-services`, and `setfacl` is missing (`apt install acl`).
-- The rivsprod02 `RI Services` share is already mounted at `/mnt/RIVSPROD02_RI_SERVICES`, with
+  which isn't on PATH for a non-interactive ssh command, so call it by full path.
+- **Vector 0.58.0 is installed and enabled** (`systemctl is-active vector`), with
+  `/etc/vector/vector.toml` from `vector/vector-linux.toml` and `/etc/default/vector` naming it.
+  It waits for the share via a `RequiresMountsFor=/mnt/RIVSPROD02_RI_SERVICES` drop-in.
+- Log root `/var/log/ri-services`: owner root, group `ri-logs` (setgid), default ACLs for
+  `vector` (read) and `ri-logs` (write). `jimmy` and `vector` are in `ri-logs`. `acl` is installed.
+- Sink folder is `\\rivsprod02\RI Services\Vector\events\beast\`, the lower-case hostname
+  (decided 2026-11-08 by taking what `hostname` returns). Smoke test passed: a line written as
+  `jimmy` reached the share byte-identical.
+- The rivsprod02 `RI Services` share is mounted at `/mnt/RIVSPROD02_RI_SERVICES`, with
   `noperm` and `/etc/win-credentials`. Here that path is the real mount, not a symlink as on
-  rivsprod01, so `RequiresMountsFor=` uses it directly. The share needs no change.
+  rivsprod01. The share needs no change.
 - Scheduled jobs are systemd timers (no crontabs), mostly `User=root`.
-- **The system time zone is `Etc/UTC`.** Timestamps will show `+00:00` and timers run in UTC,
+- **The system time zone is `Etc/UTC`.** Timestamps show `+00:00` and timers run in UTC,
   unlike the Windows hosts on UK time. Raise this with the user before recording a schedule.
-- `hostname` is lower-case `beast`, so its sink folder won't match the upper-case
-  `RIVSPROD01`/`RIVSPROD02` folders. Decide that when installing Vector.
-- The root disk was 94% full.
+- Jimmy (`jimmy.service`, user `jimmy`, uid 996) runs here. Its logging is not wired in yet;
+  it needs `CGILOG_ROOT=/var/log/ri-services` and the Node package (see the Node section).
+- `journalctl -u vector` needs sudo (matt isn't in `adm`).
 - Passing `ssh beast` a command prints a port 5905 forwarding warning. It's harmless;
   `-o ClearAllForwardings=yes` silences it.
 
-**Long-running servers** (decided 2026-09-17, first case `food-packaging-ocr` on beast):
+**Node programs** (`~/Git/Chestnut/js/chestnut`, the `chestnut` package, zero dependencies, Node 20.11+):
+- The same contract as the C# and Rust libraries, written as JSON Lines to
+  `<CGILOG_ROOT>/<program>/<program>_<date>.jsonl`, so Vector ships it unchanged.
+- Use `createLogger(program, { trigger, ... })`. A scheduled task calls `runStart({ args, schedule })`
+  and `runEnd(outcome, exitCode)`. A long-running service uses `trigger: 'service'`, `listen`,
+  `supervisor: 'systemd'` and `installExitHandlers()`, then `withRequest(id, fn)` per request and
+  `request({...})`. Heartbeats run on their own timer (default 300 s).
+- Also `io({kind, direction, host, system, resource})`, with the same once-per-run dedupe as the
+  other libraries.
+- Tests: `node --test` in that folder. The conformance test checks shape against
+  `tests/conformance/csharp_events.jsonl`. Tested on Windows; on Linux the append is `O_APPEND`
+  (`fs.openSync(file, 'a')`), but a Linux run has not been done yet.
+- Never throws into the program: a failed write goes to stderr. `CGILOG_ROOT` unset means stderr.
+
+**Long-running servers** (decided 2026-09-17, first case `food-packaging-ocr` on beast; the design was
+approved 2026-10-27 and is in `logging-standard/10-long-running-services.md`, built in C# and Node,
+not yet in Rust). The points below are the original reasoning:
 one `run_start`/`run_end` pair covers the whole life of the server process, with one event per
 request in between. This changes the standard itself, so it needs **a written proposal the user
 has reviewed before any code**. The standard (`01`) was written for one process per run, so

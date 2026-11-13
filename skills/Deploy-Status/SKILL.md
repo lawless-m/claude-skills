@@ -45,6 +45,10 @@ rows[]         project, repo_url, assembly, kind, status, note, live_sha, commit
      shows the commits counted. Then decide whether they change what is in the artefact.
 4. Act on the answer:
    - **The commits change the artefact** → rebuild and deploy (the project's `deploy.ps1`, or `/deploy`).
+   - **`STALE-DEP` across many projects** (a shared library like Chestnut or ExportKing moved on) →
+     `pwsh -File "\\rivsprod02\RI Services\Scripts\Redeploy-Dependents.ps1" [-Dependency Chestnut] [-Project X]`
+     on RIVMIS01 lists every stale artefact and the `deploy.ps1` that ships it; add `-Execute` to
+     clone each fresh from Gitea, redeploy, and confirm on the board. Stops at the first failure.
    - **They cannot change it** (e.g. a file type the rule should have ignored) → the rule is too
      broad. Say so, naming the commit and the file, rather than redeploying to silence the board.
      The exclusions live in `scripts/DriftRules.ps1` (`$script:DocPaths`, `Get-ProjectExcludes`)

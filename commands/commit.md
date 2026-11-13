@@ -24,12 +24,11 @@ Create a well-crafted git commit for the current changes.
 3. **Stage the appropriate files**:
    - Use `git add <files>` for specific files, or `git add .` if all changes are related
    - Never stage files containing secrets or credentials without explicit user approval
-   - **Chestnut check.** Run `bash ~/.claude/hooks/chestnut-gate.sh --sweep` in the repo. It lists every
-     program in the repo with its decision. Any line that is not `ok` is a program without a Chestnut
-     decision, or decided `chestnut` without the library in it. Report them to the user and say which
-     ones this commit touches. The commit hook blocks a touched program that fails, so resolve those first:
-     add the decision (`.chestnut`), and for `chestnut` add the library and its first events. Leave the
-     untouched ones to the user, and list them in the commit message body if the user agrees.
+   - **Chestnut check.** Run `bash ~/.claude/hooks/chestnut-gate.sh --sweep` in the repo. It prints the repo's
+     decision. Anything other than `ok` is a repo with no Chestnut decision (no `.chestnut` at its root), or
+     `chestnut` with no reference to the library. The commit hook blocks until that is resolved: add `.chestnut`
+     with the decision, and for `chestnut` add the library and its first events. Ask the user before choosing an
+     exemption, since exemptions are theirs to decide.
 
 4. **Write a good commit message**:
    - Use conventional commit format when appropriate: `type: description`

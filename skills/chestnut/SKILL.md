@@ -251,13 +251,12 @@ Consumers use a path dependency, the Rust equivalent of the C# `ProjectReference
 
 ## 6. New programs
 
-**Decide first.** Chestnut is the default for a new program. Before the first line of code, write
-`chestnut` as the first line of the program's `.chestnut` file, or write `exempt: off-estate: <reason>`
-or `exempt: utility: <reason>` there. The only exemptions are an off-estate program with no access to the
+**Decide first.** Chestnut is the default for every repo. Before the first line of code, write
+`chestnut` as the first line of the repo's `.chestnut` file (at the repo root), or write
+`exempt: off-estate: <reason>` or `exempt: utility: <reason>` there. The only exemptions are an off-estate program with no access to the
 Vector stores, and a non-system utility that never needs unattended logging. The `chestnut-gate` hook
-checks every `git commit`: a program it touches with no decision, or a `chestnut` decision with no library
-in it, blocks the commit. The same applies to existing programs, so an old program gets its decision the
-first time it is touched. Then start the library in the first
+checks every `git commit` in every repo: no decision at the repo root, or `chestnut` with no reference to the
+library in the repo, blocks the commit. So an existing repo gets its decision the next time it is committed. Then start the library in the first
 commit, not at the end.
 
 The playbook is about converting existing programs. A new program has no baseline, so skip the

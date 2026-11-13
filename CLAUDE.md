@@ -77,6 +77,21 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ---
 
+## Chestnut logging is the default for new programs
+
+- Before writing the first line of a new program, decide: Chestnut, or exempt. Say which, in the first
+  reply about the project.
+- Chestnut: write `chestnut` as the first line of `.chestnut` in the program's folder, then use the
+  chestnut skill from the start, not at the end.
+- Exempt only two kinds: an **off-estate** program with no access to the Vector stores
+  (`exempt: off-estate: <reason>`), or a **non-system utility** that never needs unattended logging
+  (`exempt: utility: <reason>`, e.g. Whetstone). Anything else is Chestnut.
+- Every `git commit` is checked (chestnut-gate hook): a program the commit touches with no decision, or a
+  `chestnut` decision with no library in it, blocks the commit. `/commit` runs the sweep first, so existing
+  programs that need Chestnut surface when they are next touched.
+
+---
+
 ## Secrets: never put them in the chat
 
 - Never print a password, key or connection string into tool input or output. That means no

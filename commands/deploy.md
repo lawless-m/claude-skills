@@ -36,10 +36,23 @@ Gitea repo; read them there, or in the share if a checkout happens to be open. T
 
 ## Deploying through deploy.mk
 
+**Run `Deploy-Manifest.ps1` in the repo's checkout -- it is the whole procedure:**
+
+```
+pwsh -File "\\rivsprod02\RI Services\Scripts\Deploy-Manifest.ps1" -Plan            # what would change, and what depends on it
+pwsh -File "\\rivsprod02\RI Services\Scripts\Deploy-Manifest.ps1" -Note "why"      # deploy it
+pwsh -File "\\rivsprod02\RI Services\Scripts\Deploy-Manifest.ps1" -Note "why" -Dependents   # and rebuild what is built from it
+```
+
+It does each step below mechanically and stops at the first that fails, restoring what it backed up.
+Don't hand-run the steps when the script exists; they are written out so a failure can be read. A
+target on the Linux host (`/home/...`) can't be seen from Windows, so the script takes the board's
+verdict on it. Exe rules call the repo's own `deploy.ps1`, which keeps its own backup and record.
+
 Monarch runs at `dotnet "\\RIVSTS05\Software\CSharpDLLs\Monarch\monarch.dll"`. It decides what is out
 of date by content (`Pgitblob`: the live file's git blob against the committed one) or by commit stamp
 (`Pstamp`), so its plan *is* the drift check -- the same verdict the board shows. What it does not do
-is back up, verify or record a plain copy recipe; those steps are yours:
+is back up, verify or record a plain copy recipe; the script does:
 
 1. **Clean and pushed.** No uncommitted changes, and HEAD on Gitea (`git status -sb` shows no
    `ahead`): the board judges against Gitea, and a deploy from an unpushed commit reads as drift
@@ -60,7 +73,11 @@ is back up, verify or record a plain copy recipe; those steps are yours:
    (`BOARD-FAILS` on the board); this is the check before you call it done.
 7. **Record** each file you copied: `\\rivsprod02\RI Services\Scripts\Record-Deploy.ps1 -Assembly <file>
    -Project <Repo> -FromHash <before> -ToHash <after> -DeployedBy <user> -Note "..."`.
-8. **Confirm on the board** after the next producer run (deploy-query `status project=<Repo>`): one
+8. **Dependents.** What this repo's program *runs* (`runtime_deps` on the board -- for MrsFlow, every
+   board) is smoked straight after the deploy; a break there fails the deploy. What is *built from*
+   it (`depends_on` -- for a library like Chestnut or ExportKing) is listed, and with `-Dependents`
+   rebuilt through `Redeploy-Dependents.ps1`, which deploys a manifest repo through this same script.
+9. **Confirm on the board** after the next producer run (deploy-query `status project=<Repo>`): one
    `manifest` row, OK, every file listed.
 
 CagesWaitrose, Trademap and Jerboa are the worked examples.

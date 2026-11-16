@@ -29,6 +29,13 @@ Create a well-crafted git commit for the current changes.
      `chestnut` with no reference to the library. The commit hook blocks until that is resolved: add `.chestnut`
      with the decision, and for `chestnut` add the library and its first events. Ask the user before choosing an
      exemption, since exemptions are theirs to decide.
+   - **Monarch check.** Run `bash ~/.claude/hooks/monarch-gate.sh --sweep` in the repo. Anything other than `ok` is
+     a repo that has not said what it deploys, and the commit hook blocks it. A repo that deploys files gets a
+     `deploy.mk` at its root, one rule per deployed file: draft it with
+     `pwsh -File "\\rivsprod02\RI Services\Scripts\New-DeployMk.ps1" -Repo <name> -Write` (from the board's rows),
+     settle its commented candidates, and check it with `monarch -n --json -f deploy.mk deploy`. CagesWaitrose and
+     Trademap are the worked examples; a board whose `.m` MrsFlow runs also gets `RUNTIME=MrsFlow`. A repo that
+     deploys nothing gets `.monarch` with `exempt: no-deploy: <reason>` -- ask the user first, as for Chestnut.
 
 4. **Write a good commit message**:
    - Use conventional commit format when appropriate: `type: description`

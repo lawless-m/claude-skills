@@ -1,8 +1,8 @@
-# /deploy - Deploy a .NET or Rust CGI/scheduled-task service
+# /deploy - Deploy anything a repo ships: through its deploy.mk, or a .NET or Rust exe
 
-Deploy a built .NET or Rust exe (CGI under `cgi-bin`, or a scheduled-task exe
-run from its build output) safely, so the deploy is verified rather than
-assumed.
+Deploy what a repo ships -- its files through its `deploy.mk` (Monarch), or a built .NET or Rust exe
+(CGI under `cgi-bin`, or a scheduled-task exe run from its build output) -- safely, so the deploy is
+verified rather than assumed.
 
 **Why this exists**: Translation ran a Feb 5 binary for five months after its
 fix was committed — `dotnet publish` was run, but the built exe was never
@@ -21,13 +21,51 @@ shared read-only to everyone as `\\rivmis01\Sprout\<Repo>`. The references below
 Gitea repo; read them there, or in the share if a checkout happens to be open. There is no
 `~/Git` any more.
 
-**Scope**: a `dotnet publish` or `cargo build --release` output copied (by
-hand or already in place) into `cgi-bin` or run from a share. Windows
-services, and anything else deployed by hand with no verified procedure, are
-**out of scope**. If asked to deploy one of those, say so rather than
-guessing at a procedure that hasn't been verified for it.
+**Scope**: every repo that deploys something.
 
-## Instructions
+- **A repo with `deploy.mk` at its root deploys through it** -- see **Deploying through deploy.mk**
+  just below. That covers file-only repos (a MrsFlow board's `.m` and page, scripts, a `.bat`) as
+  well as exes, because the manifest's rules say what each file is and how it gets there; an exe's
+  rule calls its own `deploy.ps1`, which then follows the steps under **Instructions**.
+- **A repo without one gets one first.** The Monarch commit hook will not let it commit otherwise.
+  Draft it with `pwsh -File "\\rivsprod02\RI Services\Scripts\New-DeployMk.ps1" -Repo <name> -Write`,
+  settle its commented candidates from the deploy scripts, check it with
+  `monarch -n --json -f deploy.mk deploy`, commit and push it, then deploy through it.
+- **Windows services** remain out of scope until one has a verified procedure; say so rather than
+  improvising one.
+
+## Deploying through deploy.mk
+
+Monarch runs at `dotnet "\\RIVSTS05\Software\CSharpDLLs\Monarch\monarch.dll"`. It decides what is out
+of date by content (`Pgitblob`: the live file's git blob against the committed one) or by commit stamp
+(`Pstamp`), so its plan *is* the drift check -- the same verdict the board shows. What it does not do
+is back up, verify or record a plain copy recipe; those steps are yours:
+
+1. **Clean and pushed.** No uncommitted changes, and HEAD on Gitea (`git status -sb` shows no
+   `ahead`): the board judges against Gitea, and a deploy from an unpushed commit reads as drift
+   the moment it lands.
+2. **Plan.** `monarch -n --json --ref <branch> -f deploy.mk deploy`. The targets with
+   `out_of_date: true` are the deploy, and nothing else is. None: nothing to deploy -- say so.
+3. **Back up** each out-of-date target that exists, to
+   `\\rivsprod02\RI Services\Outputs\deploy-backups\<Repo>\<file>.bak-<stamp>`, never beside it.
+   (An exe's own `deploy.ps1` backs up its exe; don't double it.)
+4. **Deploy.** `monarch -f deploy.mk deploy` in the repo root. It runs only the out-of-date rules'
+   recipes, and stops at the first that fails.
+5. **Verify.** Run the plan again: every target must now read up to date. Any that doesn't --
+   restore its backup, confirm the restore, and report.
+6. **Smoke what runs it.** A repo with `RUNTIME=MrsFlow` (a board): fetch each changed `.m`'s table
+   through `https://dw.ramsden-international.com/tiny02/cgi-bin/mrsflow-cgi.exe?board=<board>&table=<table>`
+   and check it is a parquet (`PAR1`). A table needing request parameters carries them on its first
+   line, `// smoke: name=value`. The producer smokes every board within five minutes too
+   (`BOARD-FAILS` on the board); this is the check before you call it done.
+7. **Record** each file you copied: `\\rivsprod02\RI Services\Scripts\Record-Deploy.ps1 -Assembly <file>
+   -Project <Repo> -FromHash <before> -ToHash <after> -DeployedBy <user> -Note "..."`.
+8. **Confirm on the board** after the next producer run (deploy-query `status project=<Repo>`): one
+   `manifest` row, OK, every file listed.
+
+CagesWaitrose, Trademap and Jerboa are the worked examples.
+
+## Instructions (a .NET or Rust exe)
 
 1. **Identify the target and how it's built.**
    - **One program per deploy, taken from where `/deploy` is called.** Some
@@ -70,8 +108,9 @@ guessing at a procedure that hasn't been verified for it.
      is exactly how a project-specific flag gets dropped. If there isn't
      one, see **Writing a deploy script** below: the default is to write and
      commit one as part of this deploy, not to hand-execute steps 2-11 again.
-   - If asked to deploy something that isn't a recognisable .NET or Rust
-     CGI/task project, stop and say so instead of improvising.
+   - Something that isn't a .NET or Rust exe -- a board, scripts, a page -- is not "out of scope":
+     it deploys through the repo's `deploy.mk` (above). Only stop if it has none and can't have one
+     written now, and say why.
 
 2. **Confirm what is currently deployed, before changing anything.**
    Hash the exe currently at the destination (`Get-FileHash -Algorithm

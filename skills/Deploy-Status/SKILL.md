@@ -26,6 +26,13 @@ rows[]         project, repo_url, assembly, kind, status, note, live_sha, commit
                deploy_date, publish_dir, machine
 ```
 
+**If you have the `deploy-query` MCP tools, use them first** — they answer the questions the JSON
+cannot: `drift` (everything behind, grouped, with what to do), `status(project)`,
+`history(assembly)` (when a row's status changed — "since when has this been stale", "did that
+deploy clear it"), `deploys(project)` (the deploy log), `dependents(library)` (what a library change
+would need redeploying) and `statuses` (the guide). Server: `http://rivsprod01:5078/mcp`.
+The JSON below is the fallback, and what the server itself reads.
+
 ## Workflow
 
 1. Fetch the JSON and filter to your project (the `project` field is the Gitea repo name):

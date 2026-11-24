@@ -1,5 +1,10 @@
 # Git Repository Sync Script for Windows Scheduled Tasks
 # This script commits local changes, pulls from remote, and pushes back
+#
+# A failure is written to sync-failed.txt in the repo (ignored, so not synced) and surfaced at the
+# start of every Claude session by hooks/sync-status.sh; success removes it. A pull that conflicts
+# is aborted rather than left half-done: on 2026-11-03 one was left mid-rebase, and every later run
+# committed onto it without pushing for three weeks.
 
 param(
     [string]$RepoPath = "$env:USERPROFILE\.claude",
@@ -17,6 +22,7 @@ try {
 # Get current timestamp and hostname
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 $hostname = $env:COMPUTERNAME
+$failFile = Join-Path $RepoPath "sync-failed.txt"
 
 Write-Host "Starting sync at $timestamp on $hostname"
 
@@ -26,6 +32,18 @@ function Invoke-Git {
     Write-Host "Running: git $Command"
     $process = Start-Process -FilePath $GitPath -ArgumentList $Command.Split(' ') -NoNewWindow -Wait -PassThru
     return $process.ExitCode
+}
+
+function Report-Failure {
+    param([string]$Message)
+    Write-Warning $Message
+    Set-Content -Path $failFile -Encoding utf8 -Value "$timestamp on ${hostname}: $Message"
+}
+
+# Never commit onto a rebase someone (or an earlier run) left in progress
+if ((Test-Path (Join-Path $RepoPath ".git\rebase-merge")) -or (Test-Path (Join-Path $RepoPath ".git\rebase-apply"))) {
+    Report-Failure "a rebase is in progress in $RepoPath, so nothing was committed. Finish or abort it by hand (git -C `"$RepoPath`" status)."
+    exit 1
 }
 
 # Check for changes
@@ -44,7 +62,9 @@ if ($status) {
 Write-Host "Pulling changes..."
 $pullResult = Invoke-Git "pull --rebase"
 if ($pullResult -ne 0) {
-    Write-Warning "Pull failed or had conflicts"
+    # Undo the half-done rebase: the local commit stays safe on master and the next run retries.
+    Invoke-Git "rebase --abort" | Out-Null
+    Report-Failure "pull --rebase failed (a conflict with another machine's changes?); the rebase was aborted and local commits are kept. Resolve by hand: git -C `"$RepoPath`" pull --rebase"
     exit 1
 }
 
@@ -52,9 +72,10 @@ if ($pullResult -ne 0) {
 Write-Host "Pushing changes..."
 $pushResult = Invoke-Git "push"
 if ($pushResult -ne 0) {
-    Write-Warning "Push failed"
+    Report-Failure "push failed; local commits are kept and the next run retries."
     exit 1
 }
 
+Remove-Item -Path $failFile -ErrorAction SilentlyContinue
 Write-Host "Sync completed successfully at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
 exit 0

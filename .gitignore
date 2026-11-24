@@ -14,3 +14,9 @@
 !sync-repo.ps1
 !WINDOWS_SYNC_SETUP.md
 .devlog/
+
+# Regenerated on every machine, so syncing them only makes conflicts (the
+# 2026-11-03 stuck rebase was in these). After the whitelist so they win.
+__pycache__/
+*.pyc
+skills/.trash/

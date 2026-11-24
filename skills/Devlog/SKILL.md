@@ -9,7 +9,15 @@ Every Claude Code session on RI hosts is pushed (PreCompact / SessionEnd hooks) 
 receiver on RIVSPROD01, which stores one JSON transcript per session. Source: Gitea
 `Ramsden-International/Devolver`.
 
-Base URL: `https://dw.ramsden-international.com/devolver` — no auth, plain `curl` + `jq`.
+**Prefer the `devlog` MCP server when it is connected** (`mcp__devlog__search`, `__session`,
+`__sessions`): same index, typed arguments, and `session` pages through a transcript instead of
+returning all of it. It is `https://intra.ramsden-international.com/devolver/mcp`
+(`claude mcp add --transport http --scope user devlog <that URL>`). The HTTP API below is the
+fallback, and what to use from scripts.
+
+Base URL: `https://intra.ramsden-international.com/devolver` — no auth, plain `curl` + `jq`.
+The old `dw.ramsden-international.com/devolver` answers with a 308 redirect, which `curl`
+without `-L` returns as an empty body — use the new host.
 
 ## Endpoints
 
@@ -45,5 +53,5 @@ e.g. `jq -r '.conversation[] | select(.type=="user") | .content'`.
 
 ## Linking a human to a session
 
-`https://dw.ramsden-international.com/devolver/session?machine=M&project=P&session=ID&view=prompts`
+`https://intra.ramsden-international.com/devolver/session?machine=M&project=P&session=ID&view=prompts`
 (`view` = `prompts` | `replies` (default) | `all`). Browsable search: `/devolver/search`.

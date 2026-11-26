@@ -15,12 +15,19 @@ On top of that sits a verification layer — trace events, a per-program spec, a
 
 ## 1. Make sure the repo is present
 
-The repo must sit at `~/Git/Chestnut` — consuming projects reference the library by a
-relative `ProjectReference`, so it has to be a sibling of the program's repo.
+Consuming projects reference the library by a relative `ProjectReference`, so the Chestnut repo
+has to be a sibling of the program's repo. That is `../Chestnut` from the program's repo root on every
+machine, and the `ProjectReference` depth is measured from there. Check that path first; if it is not
+there, search before concluding anything is missing:
 
-- Missing: `git clone git@dw.ramsden-international.com:matthew.heath/Chestnut.git ~/Git/Chestnut`
-- Present: don't pull or touch its working tree unasked. `git -C ~/Git/Chestnut fetch` and
-  mention it if `master` is behind `origin/master` or the tree is dirty.
+- Check `../Chestnut` from the program's repo root first (e.g. `C:\Sprout\Chestnut` beside
+  `C:\Sprout\Squirrel`), then `fd -HI -t d '^Chestnut$'` under the usual parent folders. Confirm it is the
+  Chestnut repo (`src/Chestnut/Chestnut.csproj` and `logging-standard/` present).
+- Only if none of those exists, clone it: `git clone git@dw.ramsden-international.com:matthew.heath/Chestnut.git`
+  into the sibling location, not a fixed path.
+- Found: don't pull or touch its working tree unasked. `git -C <path> fetch` and mention it if `master`
+  is behind `origin/master` or the tree is dirty.
+- Say where you found it in the first reply, so a wrong location is visible early.
 
 ## 2. Read before doing anything
 
@@ -32,8 +39,8 @@ The repo is the source of truth; this skill only points into it.
 - `logging-standard/01-log-event-schema.md` — the event contract, kept to hand.
 - `verification-standard/CONTENTS.md` — the tracing and verification set, if the job touches
   it (§4 below).
-- `~/Git/ElastiCompare/chestnut-survey.md` — the reference conversion (scheduled task,
-  M.E.Logging adapter, deploy, first-run verification). `~/Git/X3Bot/src/X3.Cli/chestnut-survey.md`
+- `../ElastiCompare/chestnut-survey.md` — the reference conversion (scheduled task,
+  M.E.Logging adapter, deploy, first-run verification). `../X3Bot/src/X3.Cli/chestnut-survey.md`
   is a second one (a generic tool whose schedule comes from `CGILOG_SCHEDULE` set by the calling .bat).
 
 ## 3. Conventions established so far
@@ -43,23 +50,24 @@ The repo is the source of truth; this skill only points into it.
 - The survey is written to `chestnut-survey.md` beside the program's `.csproj` or `Cargo.toml`,
   in the program's own repo, **before** the program's code changes. It is committed there with
   the program, not in Chestnut. Only a program with no local source (a wrapped jar, a repo that
-  exists only on a Linux host) keeps `~/Git/Chestnut/conversions/<program>-survey.md`.
-  `chestnut-map declared ~/Git map/declared.json` collects both kinds into the estate map.
+  exists only on a Linux host) keeps `../Chestnut/conversions/<program>-survey.md`.
+  `chestnut-map declared` collects both kinds into the estate map (its arguments are not verified
+  here; check `chestnut-map --help` in the Chestnut repo before relying on this line).
 - `program` is lower snake case and becomes the log directory name (`x3_4gl`).
 - Reference the library from the program's csproj, with the comment the others carry:
   ```xml
   <!-- Structured logging to C:\RI Services\Logs\<program>. Needs the Chestnut repo checked out beside this one. -->
   <ProjectReference Include="..\Chestnut\src\Chestnut\Chestnut.csproj" />
   ```
-  (adjust the `..` depth to where the csproj sits under `~/Git/<Repo>`).
+  (adjust the `..` depth to where the csproj sits under the program's repo root).
 - Existing `Microsoft.Extensions.Logging` code: swap the provider for `AddChestnut(log)` and leave
   the log calls alone. Dispose the `LoggerFactory` before the `ChestnutLogger`.
 - `RunEnd` on every exit path, including argument-parse failures in `Main`.
 - A deploy script's smoke run must set `CGILOG_ROOT` to a scratch dir and `CGILOG_TRIGGER=manual`,
   then delete the scratch — otherwise it leaves a fake scheduled run in the estate's logs.
-  `~/Git/X3Bot/deploy.ps1` does all of this and restores the env afterwards (the playbook names
+  `../X3Bot/deploy.ps1` does all of this and restores the env afterwards (the playbook names
   ElastiCompare's, but that one only sets `CGILOG_ROOT`). Framework-dependent deploys must also
-  check `Chestnut.dll` landed beside the exe, as `~/Git/ElastiCompare/deploy.ps1` does. Use `/deploy` for the deploy itself.
+  check `Chestnut.dll` landed beside the exe, as `../ElastiCompare/deploy.ps1` does. Use `/deploy` for the deploy itself.
 - Verification isn't done at deploy: the first real scheduled run, under the task's own
   account, must be confirmed in the log and via Vector, and recorded in the survey.
 
@@ -97,7 +105,7 @@ each part was worth.
   (D-15): ExportKing has `IDbisamTrace`, and the consumer writes the ~40-line adapter
   (`pilots/ExportKing.Probe/ChestnutTrace.cs`). A library has no run of its own, so it emits
   through its caller's logger.
-- **The spec lives in the program's repo**, not in Chestnut — `~/Git/ExportKing/spec/exportking.spec.json`
+- **The spec lives in the program's repo**, not in Chestnut — `../ExportKing/spec/exportking.spec.json`
   is the only one so far, and it is private (D-8: cite `../Derek/DBISAM-PROTOCOL.md`, never
   reproduce it). `01-spec-format.md` is the format. `02-process-machine.md` is the shared
   run-to-completion machine every process program inherits — P1–P8, the exit-code table, the
@@ -123,7 +131,7 @@ were visible in the trace with no spec at all. `10-tasks.md` explains why that o
 ## 5. Rust
 
 `logging-standard/04-library-rust.md` is the spec, and the crate is built:
-`~/Git/Chestnut/rust/chestnut` (D-18: a standalone crate in the Chestnut repo, no workspace;
+`../Chestnut/rust/chestnut` from a program's repo (`rust/chestnut` inside the Chestnut repo) (D-18: a standalone crate in the Chestnut repo, no workspace;
 `verify/` is a separate crate and is the checker, not the library). Use it; don't write the
 format by hand inside a program. The README's "Using the Rust library" has the usage.
 `cargo clippy --all-targets -- -D warnings` and `cargo nextest run` in that directory are its
@@ -191,7 +199,7 @@ was.
 - Passing `ssh beast` a command prints a port 5905 forwarding warning. It's harmless;
   `-o ClearAllForwardings=yes` silences it.
 
-**Node programs** (`~/Git/Chestnut/js/chestnut`, the `chestnut` package, zero dependencies, Node 20.11+):
+**Node programs** (`../Chestnut/js/chestnut`, the `chestnut` package, zero dependencies, Node 20.11+):
 - The same contract as the C# and Rust libraries, written as JSON Lines to
   `<CGILOG_ROOT>/<program>/<program>_<date>.jsonl`, so Vector ships it unchanged.
 - Use `createLogger(program, { trigger, ... })`. A scheduled task calls `runStart({ args, schedule })`
